@@ -1,3 +1,4 @@
+#TODO: add mapping from numbers to key
 from typing import Tuple, Union
 from dataclasses import dataclass
 import re
@@ -43,6 +44,7 @@ class DataLoader:
         # Mapper: for letter key, we have an int
         # Is handy to recover index of variable type.
         self.mapper = {h: i for i, h in enumerate(self.header)}
+        self.reverse_mapper = {i: h for i, h in enumerate(self.header)}
 
     def parse_stats_directory(self, directory: str = None) -> Tuple[str,np.ndarray]:
         """
