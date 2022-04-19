@@ -1,4 +1,4 @@
-#TODO: add mapping from numbers to key
+#TODO: add key2num from numbers to key
 from typing import Tuple, Union
 from dataclasses import dataclass
 import re
@@ -41,10 +41,11 @@ class DataLoader:
             lines[i] = re.sub(r'# colonne [0-9]+ : ', '', lines[i])
             lines[i] = lines[i].replace("\n", "")
         self.header = np.array(lines)
-        # Mapper: for letter key, we have an int
+        # key2num_dict: for letter key, we have an int
         # Is handy to recover index of variable type.
-        self.mapper = {h: i for i, h in enumerate(self.header)}
-        self.reverse_mapper = {i: h for i, h in enumerate(self.header)}
+        # num_2_key is essentially the same in reverse
+        self.key2num_dict = {h: i for i, h in enumerate(self.header)}
+        self.num2key_dict = {i: h for i, h in enumerate(self.header)}
 
     def parse_stats_directory(self, directory: str = None) -> Tuple[str,np.ndarray]:
         """
@@ -105,9 +106,9 @@ class DataLoader:
         self.data = data
         self.shape = self.data.shape
 
-    def mapping(self, variable: Union[str, int, np.integer]) -> int:
+    def key2num(self, variable: Union[str, int, np.integer]) -> int:
         """
-        mapping function, handles types for a list of strings or integers for only \textbf{ONE} variable
+        key2num function, handles types for a list of strings or integers for only \textbf{ONE} variable
         Parameters:
         ----------
         variable: Union[str, int, np.integer]
@@ -119,7 +120,24 @@ class DataLoader:
             Index of variable of interest
         """
         if isinstance(variable, str):
-            return self.mapper[variable]
+            return self.key2num_dict[variable]
+        return variable
+    
+    def num2key(self, variable: Union[str, int, np.integer]) -> int:
+        """
+        key2num function, handles types for a list of strings or integers for only \textbf{ONE} variable
+        Parameters:
+        ----------
+        variable: Union[str, int, np.integer]
+            Variables of interest, whether it be an int or a name, like "T" for temperature
+        ----------
+        Returs:
+        None
+        index: int
+            Index of variable of interest
+        """
+        if isinstance(variable, str):
+            return self.num2key_dict[variable]
         return variable
 
     def column_handler(self, variable: Union[str, list, int, np.ndarray])-> Tuple[int]:
@@ -137,10 +155,10 @@ class DataLoader:
             The index(es) if the variables of interest inside the file for them to be loaded properly
         """
         if isinstance(variable, list):
-            return tuple(self.mapping(var) for var in variable)
+            return tuple(self.key2num(var) for var in variable)
 
         if isinstance(variable, str): 
-            return (self.mapping(variable),)
+            return (self.key2num(variable),)
         return (variable)
 
     def __getitem__(self, column: Union[str, list, int, np.ndarray]) -> Union[np.ndarray, np.float64]:
