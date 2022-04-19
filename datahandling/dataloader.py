@@ -95,7 +95,7 @@ class DataLoader:
         self.read_header(self.file_path[0])
 
         if self.columns is not None:
-            self.columns_index = self.column_handler(self.columns)
+            self.columns_index = self.column_handler_key2num(self.columns)
 
         cols = None
         if self.columns:
@@ -123,24 +123,24 @@ class DataLoader:
             return self.key2num_dict[variable]
         return variable
     
-    def num2key(self, variable: Union[str, int, np.integer]) -> int:
+    def num2key(self, variable: Union[str, int, np.integer]) -> str:
         """
-        key2num function, handles types for a list of strings or integers for only \textbf{ONE} variable
+        num2key function, handles types for a list of strings or integers for only \textbf{ONE} variable
         Parameters:
         ----------
-        variable: Union[str, int, np.integer]
-            Variables of interest, whether it be an int or a name, like "T" for temperature
+        variable: Union[int, np.integer]
+            Variables of interest, wheter it be an int or a string
         ----------
         Returs:
         None
         index: int
             Index of variable of interest
         """
-        if isinstance(variable, str):
+        if isinstance(variable, (int, np.integer)):
             return self.num2key_dict[variable]
         return variable
 
-    def column_handler(self, variable: Union[str, list, int, np.ndarray])-> Tuple[int]:
+    def column_handler_key2num(self, variable: Union[str, list, int, np.ndarray])-> Tuple[int]:
         """
         column handler, handles which columns are to be saved. If you only study the
         temperature for instance, there's no need for loading other variables. This function
@@ -161,6 +161,27 @@ class DataLoader:
             return (self.key2num(variable),)
         return (variable)
 
+    def column_handler_num2key(self, variable: Union[str, list, int, np.ndarray])-> Tuple[int]:
+        """
+        column handler, handles which columns are to be saved. If you only study the
+        temperature for instance, there's no need for loading other variables. This function
+        returns the number of the column of interest
+        Parameters:
+        ----------
+        variable: Union[str, list, int, np.ndarray]
+            Variables of interest. Can be one or multiple of them.
+        ----------
+        Returs:
+        index: Tuple[int]
+            The index(es) if the variables of interest inside the file for them to be loaded properly
+        """
+        if isinstance(variable, list):
+            return tuple(self.num2key(var) for var in variable)
+
+        if isinstance(variable, str): 
+            return (self.num2key(variable),)
+        return (variable)
+
     def __getitem__(self, column: Union[str, list, int, np.ndarray]) -> Union[np.ndarray, np.float64]:
         """
         Gets the element of interest whether it be a string, a list, or a numpy array.
@@ -174,6 +195,6 @@ class DataLoader:
             The data you're interested in, an array or a floating point value
         """
         if isinstance(column, str):
-            column = self.column_handler(column)
+            column = self.column_handler_key2num(column)
             return self.data[column]
         return self.data[column]
