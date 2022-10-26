@@ -1,6 +1,5 @@
-#!/usr/bin/env python
-
-from distutils.core import setup
+from setuptools import setup
+from setuptools import find_packages
 
 setup(
     name='TrioIJK_data_handler',
@@ -9,5 +8,5 @@ setup(
     author='Yanis Zatout',
     author_email='yanis.zatout@cnrs.fr',
     url='https://github.com/YanisZatout/TrioIJK_data_handler',
-    packages=['distutils', 'distutils.command'],
+    packages=find_packages("datahandling"),
 )
