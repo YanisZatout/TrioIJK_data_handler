@@ -145,7 +145,7 @@ class DataLoader:
         data = np.array(data)
         self.data = data
         self.shape = self.data.shape
-        self.space = self.data[0, :, 0]
+        self.space = self.data[:, 0]
 
     def key2num(self, variable: Union[str, int, np.integer]) -> int:
         """
@@ -198,24 +198,6 @@ class DataLoader:
         variable: Union[str, list, int, np.ndarray]
             Variables of interest. Can be one or multiple of them.
         ----------
-        from datahandling import dataloader as dl
-
-
-        loader = dl.DataLoader(directory="rep22", type_stat="statistiques")
-        loader.load_data()
-
-
-        print(loader[0,0,0].shape)
-        print(loader[0,0].shape)
-        print(loader[0].shape)
-
-        print(loader["T"].shape)
-
-        loader = dl.DataLoader(columns=[0,"T"])
-        loader.load_data()
-        print(loader.shape)
-
-        print(loader.num2key("53"))   Returs:
         index: Tuple[int]
             The index(es) if the variables of interest inside the file for them to be loaded properly
         """
@@ -250,7 +232,7 @@ class DataLoader:
     def __getitem__(
         self,
         column: Union[str, list, int, npt.ArrayLike]
-    ) -> Union[np.ndarray, np.float64]:
+    ) -> Union[npt.ArrayLike]:
         """
         Gets the element of interest whether it be a string, a list, or a numpy array.
         Parameters:
@@ -266,5 +248,5 @@ class DataLoader:
 
         if isinstance(column, str):
             column = self.column_handler_key2num(column)
-            return self.data[..., column]
+            return self.data[..., column].squeeze()
         return self.data[column]
