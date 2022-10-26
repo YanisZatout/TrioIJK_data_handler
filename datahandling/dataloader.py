@@ -3,6 +3,7 @@ import re
 import numpy as np
 import sys
 import os
+from numpy import typing as npt
 
 
 class DataLoader:
@@ -13,13 +14,13 @@ class DataLoader:
     def __init__(self,
                  directory: str = "rep22",
                  type_stat: str = "statistiques",
-                 columns: Union[str, int] = None,
+                 columns: Union[str, int, None] = None,
                  separator: str = "\s",
                  type_file: str = ".txt"
                  ):
         self.directory: str = directory
         self.type_stat: str = type_stat
-        self.columns: Union[str, int] = columns
+        self.columns: Union[str, int, None] = columns
         self.separator: str = separator
         self.type_file: str = type_file
 
@@ -53,8 +54,8 @@ class DataLoader:
         self.num2key_dict = {i: h for i, h in enumerate(self.header)}
 
     def parse_stats_directory(self,
-                              directory: str = None
-                              ) -> Tuple[list[str], np.ndarray]:
+                              directory: Union[str, None] = None
+                              ) -> Tuple[list[str], npt.ArrayLike]:
         """
         Gives names of files needed, as well as time steps for respective stats
         ----------
@@ -62,7 +63,8 @@ class DataLoader:
         directory: str
             Which directory to search in
         type_stat: str
-            Type of statistics to search for, for example "moyenne_spatiale" for instance
+            Type of statistics to search for, for example "moyenne_spatiale"
+            for instance
         type_file: str
             Extention of file, example: ".txt"
         ----------
@@ -115,6 +117,36 @@ class DataLoader:
         self.shape = self.data.shape
         self.space = self.data[0, :, 0]
 
+    def load_last(self) -> None:
+        """
+        Loads data into class data variable for the last time 
+        step for the given statistics
+        Parameters:
+        ----------
+        None
+        ----------
+        Returs:
+        None
+        """
+
+        data = []
+        self.file_path, self.time = self.parse_stats_directory()
+        last_time = f"{self.type_stat}_{self.time[-1]}"
+        self.read_header(self.file_path[0])
+
+        if self.columns is not None:
+            self.columns_index = self.column_handler_key2num(self.columns)
+
+        cols = None
+        if self.columns:
+            cols = self.columns_index
+        file = self.file_path[-1]
+        data = np.loadtxt(file, usecols=cols)
+        data = np.array(data)
+        self.data = data
+        self.shape = self.data.shape
+        self.space = self.data[0, :, 0]
+
     def key2num(self, variable: Union[str, int, np.integer]) -> int:
         """
         key2num function, handles types for a list of strings or integers for
@@ -152,9 +184,11 @@ class DataLoader:
             return self.num2key_dict[variable]
         return variable
 
-    def column_handler_key2num(self,
-                               variable: Union[str, list, int, np.ndarray])
-    -> Tuple[int]:
+    def column_handler_key2num(
+        self,
+            variable: Union[str, list,
+                            int, npt.ArrayLike]
+    ) -> Tuple[int]:
         """
         column handler, handles which columns are to be saved. If you only study the
         temperature for instance, there's no need for loading other variables. This function
@@ -192,7 +226,7 @@ class DataLoader:
             return (self.key2num(variable),)
         return (variable)
 
-    def column_handler_num2key(self, variable: Union[str, list, int, np.ndarray]) -> Tuple:
+    def column_handler_num2key(self, variable: Union[str, list, int, npt.ArrayLike]) -> Tuple:
         """
         column handler, handles which columns are to be saved. If you only study the
         temperature for instance, there's no need for loading other variables. This function
@@ -213,9 +247,10 @@ class DataLoader:
             return (self.num2key(variable),)
         return (variable)
 
-    def __getitem__(self,
-                    column: Union[str, list, int, np.ndarray])
-    -> Union[np.ndarray, np.float64]:
+    def __getitem__(
+        self,
+        column: Union[str, list, int, npt.ArrayLike]
+    ) -> Union[np.ndarray, np.float64]:
         """
         Gets the element of interest whether it be a string, a list, or a numpy array.
         Parameters:
@@ -231,5 +266,5 @@ class DataLoader:
 
         if isinstance(column, str):
             column = self.column_handler_key2num(column)
-            return self.data[column]
+            return self.data[..., column]
         return self.data[column]
