@@ -250,3 +250,157 @@ class DataLoader:
             column = self.column_handler_key2num(column)
             return self.data[..., column].squeeze()
         return self.data[column]
+
+
+class DataLoaderPandas(pd.DataFrame):
+    def __init__(self,
+                 directory: str = "rep22",
+                 type_stat: str = "statistiques",
+                 columns: Union[str, int, None] = None,
+                 separator: str = "\s",
+                 type_file: str = ".txt"
+                 ):
+        self.directory = directory
+        self.type_stat = type_stat
+        self.columns = columns
+        self.separator = separator
+        self.type_file = type_file
+
+    def read_header(self, filename: str) -> None:
+        """
+        Reads the header of a .txt file in a TrioIJK simulation
+        Parameters:
+        filename: str
+            Name of file, or file path
+        ----------
+        Returns
+        header: np.array
+            Name of columns of given .txt file
+        """
+        lines = []
+        with open(filename, 'r') as input:
+            for line in input:
+                if '#' not in line:
+                    break
+                lines = [*lines, line]
+        if self.type_stat == "moyenne_spatiale":
+            lines = lines[1:]
+        elif self.type_stat == "statistiques":
+            lines = lines[2:]
+        else:
+            raise ValueError("Type of statistics "
+                             f"{self.type_stat} not recognized")
+
+        for i in range(len(lines)):
+            lines[i] = re.sub(r'# colonne [0-9]+ : ', '', lines[i])
+            lines[i] = lines[i].replace("\n", "")
+        self.header = np.array(lines)
+        # key2num_dict: for letter key, we have an int
+        # Is handy to recover index of variable type.
+        # num_2_key is essentially the same in reverse
+        self.key2num_dict = {h: i for i, h in enumerate(self.header)}
+        self.num2key_dict = {i: h for i, h in enumerate(self.header)}
+
+    def parse_stats_directory(self,
+                              directory: Union[str, None] = None
+                              ) -> Tuple[list[str], npt.ArrayLike]:
+        """
+        Gives names of files needed, as well as time steps for respective stats
+        ----------
+        Parameters:
+        directory: str
+            Which directory to search in
+        type_stat: str
+            Type of statistics to search for, for example "moyenne_spatiale"
+            for instance
+        type_file: str
+            Extention of file, example: ".txt"
+        ----------
+        Returns:
+        file_path: str
+            The path of files
+        time: np.array
+            Numpy array of steps of time
+        """
+        if directory is None:
+            directory = self.directory
+        time = []
+        file_path = []
+        for filename in os.listdir(self.directory):
+            f = os.path.join(self.directory, filename)
+            if os.path.isfile(f) and self.type_stat in filename:
+                file_path = [*file_path, f]
+        file_path.sort()
+        for fp in file_path:
+            fp = fp.replace(os.path.join(
+                self.directory, f"{self.type_stat}_"), "")
+            fp = fp.replace(".txt", "")
+            time = [*time, float(fp)]
+        return file_path, np.array(time)
+
+    def load_data(self) -> None:
+        """
+        loads data into data variable of class
+        Parameters:
+        ----------
+        None
+        ----------
+        Returs:
+        None
+        """
+        data = []
+        self.file_path, self.time = self.parse_stats_directory()
+        self.read_header(self.file_path[0])
+
+        if self.columns is not None:
+            self.columns_index = self.column_handler_key2num(self.columns)
+
+        cols = None
+        if self.columns:
+            cols = self.columns_index
+        for file in self.file_path:
+            data = [*data, np.loadtxt(file, usecols=cols)]
+        data = np.array(data)
+        self.shape = self.data.shape
+        self.space = self.data[0, :, 0]
+        super(pd.DataFrame).__init__(
+            data=data,
+            index=self.space,
+            columns=self.header,
+            dtype=np.float32,
+        )
+
+    def load_last(self) -> None:
+        """
+        Loads data into class data variable for the last time 
+        step for the given statistics
+        Parameters:
+        ----------
+        None
+        ----------
+        Returs:
+        None
+        """
+
+        data = []
+        self.file_path, self.time = self.parse_stats_directory()
+        last_time = f"{self.type_stat}_{self.time[-1]}"
+        self.read_header(self.file_path[0])
+
+        if self.columns is not None:
+            self.columns_index = self.column_handler_key2num(self.columns)
+
+        cols = None
+        if self.columns:
+            cols = self.columns_index
+        file = self.file_path[-1]
+        data = np.loadtxt(file, usecols=cols)
+        data = np.array(data)
+        self.shape = self.data.shape
+        self.space = self.data[:, 0]
+        super(pd.DataFrame).__init__(
+            data=data,
+            index=self.space,
+            columns=self.header,
+            dtype=np.float32,
+        )
