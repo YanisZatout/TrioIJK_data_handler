@@ -3,7 +3,24 @@ from datahandling.dataloader import DataLoader
 import numpy as np
 import matplotlib.pyplot as plt
 
-from datahandling.dataloader import DataLoader
+
+def matplotlib_latex_params() -> None:
+    plt.rc(
+        'text', usetex=True
+    )
+    plt.rc(
+        'font',
+        **
+        {
+            "family": "sans-serif",
+            "sans-serif": "Helvetica",
+            "size": 18
+        })
+    plt.rcParams.update(
+        {
+            "text.latex.preamble": r"\usepackage{amsmath}",
+        }
+    )
 
 
 class DataPlotter(DataLoader):

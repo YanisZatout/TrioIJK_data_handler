@@ -4,6 +4,7 @@ import numpy as np
 import sys
 import os
 from numpy import typing as npt
+import pandas as pd
 
 
 class DataLoader:
@@ -41,7 +42,13 @@ class DataLoader:
                 if '#' not in line:
                     break
                 lines = [*lines, line]
-        lines = lines[1:]
+        if self.type_stat == "moyenne_spatiale":
+            lines = lines[1:]
+        elif self.type_stat == "statistiques":
+            lines = lines[2:]
+        else:
+            raise ValueError("Type of statistics "
+                             f"{self.type_stat} not recognized")
 
         for i in range(len(lines)):
             lines[i] = re.sub(r'# colonne [0-9]+ : ', '', lines[i])
@@ -146,6 +153,45 @@ class DataLoader:
         self.data = data
         self.shape = self.data.shape
         self.space = self.data[:, 0]
+
+    def load_last_df(self) -> None:
+        """
+        Loads data into class data variable for the last time
+        step for the given statistics and puts it in a pandas dataframe
+        Parameters:
+        ----------
+        None
+        ----------
+        Returs:
+        None
+        """
+        data = []
+        self.file_path, self.time = self.parse_stats_directory()
+        last_time = f"{self.type_stat}_{self.time[-1]}"
+        self.read_header(self.file_path[0])
+
+        if self.columns is not None:
+            self.columns_index = self.column_handler_key2num(self.columns)
+
+        cols = None
+        if self.columns:
+            cols = self.columns_index
+        file = self.file_path[-1]
+        data = np.loadtxt(file, usecols=cols)
+        data = np.array(data)
+        self.data = data
+        self.shape = self.data.shape
+        self.space = self.data[:, 0]
+        self.data = pd.DataFrame(
+            data=self.data,
+            index=self.space,
+            columns=self.header,
+            dtype=np.float32
+        )
+        # Hacky way to force it to use pandas in this case
+        self.__getitem__ = self.data.__getitem__
+        self.loc = self.data.loc
+        self.iloc = self.data.iloc
 
     def key2num(self, variable: Union[str, int, np.integer]) -> int:
         """
@@ -252,14 +298,15 @@ class DataLoader:
         return self.data[column]
 
 
-class DataLoaderPandas(pd.DataFrame):
-    def __init__(self,
-                 directory: str = "rep22",
-                 type_stat: str = "statistiques",
-                 columns: Union[str, int, None] = None,
-                 separator: str = "\s",
-                 type_file: str = ".txt"
-                 ):
+class DataLoaderPandas:
+    def __init__(
+        self,
+            directory: str = "rep22",
+            type_stat: str = "statistiques",
+            columns: Union[str, int, None] = None,
+            separator: str = "\s",
+            type_file: str = ".txt"
+    ):
         self.directory = directory
         self.type_stat = type_stat
         self.columns = columns
@@ -301,9 +348,10 @@ class DataLoaderPandas(pd.DataFrame):
         self.key2num_dict = {h: i for i, h in enumerate(self.header)}
         self.num2key_dict = {i: h for i, h in enumerate(self.header)}
 
-    def parse_stats_directory(self,
-                              directory: Union[str, None] = None
-                              ) -> Tuple[list[str], npt.ArrayLike]:
+    def parse_stats_directory(
+        self,
+            directory: Union[str, None] = None
+    ) -> Tuple[list[str], npt.ArrayLike]:
         """
         Gives names of files needed, as well as time steps for respective stats
         ----------
@@ -338,39 +386,8 @@ class DataLoaderPandas(pd.DataFrame):
             time = [*time, float(fp)]
         return file_path, np.array(time)
 
-    def load_data(self) -> None:
-        """
-        loads data into data variable of class
-        Parameters:
-        ----------
-        None
-        ----------
-        Returs:
-        None
-        """
-        data = []
-        self.file_path, self.time = self.parse_stats_directory()
-        self.read_header(self.file_path[0])
 
-        if self.columns is not None:
-            self.columns_index = self.column_handler_key2num(self.columns)
-
-        cols = None
-        if self.columns:
-            cols = self.columns_index
-        for file in self.file_path:
-            data = [*data, np.loadtxt(file, usecols=cols)]
-        data = np.array(data)
-        self.shape = self.data.shape
-        self.space = self.data[0, :, 0]
-        super(pd.DataFrame).__init__(
-            data=data,
-            index=self.space,
-            columns=self.header,
-            dtype=np.float32,
-        )
-
-    def load_last(self) -> None:
+    def load_last(self) -> pd.DataFrame:
         """
         Loads data into class data variable for the last time 
         step for the given statistics
@@ -387,18 +404,12 @@ class DataLoaderPandas(pd.DataFrame):
         last_time = f"{self.type_stat}_{self.time[-1]}"
         self.read_header(self.file_path[0])
 
-        if self.columns is not None:
-            self.columns_index = self.column_handler_key2num(self.columns)
-
-        cols = None
-        if self.columns:
-            cols = self.columns_index
         file = self.file_path[-1]
-        data = np.loadtxt(file, usecols=cols)
+        data = np.loadtxt(file)
         data = np.array(data)
-        self.shape = self.data.shape
-        self.space = self.data[:, 0]
-        super(pd.DataFrame).__init__(
+        self.shape = data.shape
+        self.space = data[:, 0]
+        return pd.DataFrame(
             data=data,
             index=self.space,
             columns=self.header,
