@@ -103,3 +103,36 @@ def assess_mean_error_across_quantities(
         epsilon_qt = compute_eps_pandas(les, dns, h)
         eps.append(epsilon_qt)
     return np.mean(eps), eps
+
+
+def error_profile_quantification_order_1(x, y):
+    error = np.abs(x - y)
+    return np.mean(error, axis=(0, 1))
+
+
+def error_profile_quantification_general(error):
+    return np.mean(error, axis=(0, 1))
+
+
+def compute_rms(x):
+    return np.sqrt(np.mean(x**2, axis=(0, 1)) - np.mean(x, axis=(0, 1))**2)
+
+
+def compute_rms_diff(x, y):
+    xrms = compute_rms(x)
+    yrms = compute_rms(y)
+    return np.abs((xrms-yrms)/xrms)
+
+
+def compute_gradient_error(x, y, mesh):
+    gradx = np.gradient(x, *mesh, edge_order=2)
+    grady = np.gradient(y, *mesh, edge_order=2)
+    return [error_profile_quantification_order_1(gx, gy)
+            for gx, gy in zip(gradx, grady)]
+
+
+def compute_all_errors(x, y, mesh):
+    error_profile = error_profile_quantification_order_1(x, y)
+    rms_profile = compute_rms_diff(x, y)
+    gradient_profile = compute_gradient_error(x, y, mesh)
+    return error_profile, rms_profile, gradient_profile
