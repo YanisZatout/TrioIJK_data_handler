@@ -1,10 +1,12 @@
 from typing import Tuple, Union
-from datahandling.dataloader import DataLoader
+
+import pandas as pd
+from datahandling.dataloader import DataLoader, DataLoaderPandas
 import numpy as np
 import matplotlib.pyplot as plt
 
 
-def matplotlib_latex_params() -> None:
+def matplotlib_latex_params(size=20) -> None:
     plt.rc(
         'text', usetex=True
     )
@@ -14,7 +16,7 @@ def matplotlib_latex_params() -> None:
         {
             "family": "sans-serif",
             "sans-serif": "Helvetica",
-            "size": 18
+            "size": size
         })
     plt.rcParams.update(
         {
@@ -56,3 +58,59 @@ class DataPlotter(DataLoader):
             plt.ylabel(f"{self.num2key(var)}")
             plt.title(f"Plot of {var} as a function of space")
         plt.show()
+
+
+def compute_Rij_middle_canal(loader: DataLoaderPandas, df: pd.DataFrame):
+    middle_canal = len(loader.space)//2
+    newdf = pd.DataFrame()
+    from itertools import combinations_with_replacement
+    for comb in combinations_with_replacement("UVW", 2):
+        column = f"{comb[0]}'{comb[1]}'"
+
+        newdf[column] = (df[f"{comb[0]}{comb[1]}"] - df[comb[0]] * df[comb[1]]
+                         ).groupby("time").apply(lambda x: x.iloc[middle_canal])
+
+    return newdf
+
+
+def compute_uu_middle_canal(loader: DataLoaderPandas, df: pd.DataFrame):
+    middle_canal = len(loader.space)//2
+    newdf = pd.DataFrame()
+    newdf["U'U'"] = (df["UU"] - df["U"] **
+                     2).groupby("time").apply(lambda x: x.iloc[middle_canal])
+    newdf["U"] = df["U"].groupby("time").apply(lambda x: x.iloc[middle_canal])
+    return newdf
+
+
+def compute_T_middle_canal(loader: DataLoaderPandas, df: pd.DataFrame):
+    middle_canal = len(loader.space)//2
+    newdf = pd.DataFrame()
+    newdf["T"] = df["T"].groupby("time").apply(lambda x: x.iloc[middle_canal])
+    newdf["T'T'"] = (df["T2"] - df["T"] **
+                     2).groupby("time").apply(lambda x: x.iloc[middle_canal])
+    return newdf
+
+
+def verify_convergence(rep: str = "./"):
+    import pandas as pd
+    matplotlib_latex_params()
+    loader = DataLoaderPandas(rep, type_stat="statistiques")
+    df: pd.DataFrame = loader.load_data()
+    uu = compute_uu_middle_canal(loader, df)
+    T = compute_T_middle_canal(loader, df)
+
+    # all = pd.concat([uu, T], axis=1)
+    fig, axs = plt.subplots(1, len(uu.columns), figsize=(16, 9))
+    for c, ax in zip(uu.columns, axs):
+        uu[c].plot(ylabel=c, ax=ax)
+    plt.grid(True)
+    fig.suptitle(r"$U$ and $\langle U' U' \rangle$ in middle of canal")
+
+
+    fig, axs = plt.subplots(1, len(T.columns), figsize=(16, 9))
+    for c, ax in zip(T.columns, axs):
+        T[c].plot(ylabel=c, ax=ax)
+    plt.grid(True)
+    fig.suptitle(r"$T$ and $\langle T' T' \rangle$ in middle of canal")
+
+    plt.show()
