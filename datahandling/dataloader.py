@@ -1,10 +1,11 @@
-from typing import Tuple, Union
+from typing import List, Tuple, Union
 import re
 import numpy as np
 import sys
 import os
 from numpy import typing as npt
 import pandas as pd
+from scipy.integrate import simpson
 
 
 class DataLoader:
@@ -126,7 +127,7 @@ class DataLoader:
 
     def load_last(self) -> None:
         """
-        Loads data into class data variable for the last time 
+        Loads data into class data variable for the last time
         step for the given statistics
         Parameters:
         ----------
@@ -386,10 +387,9 @@ class DataLoaderPandas:
             time = [*time, float(fp)]
         return file_path, np.array(time)
 
-
     def load_last(self) -> pd.DataFrame:
         """
-        Loads data into class data variable for the last time 
+        Loads data into class data variable for the last time
         step for the given statistics
         Parameters:
         ----------
@@ -415,3 +415,85 @@ class DataLoaderPandas:
             columns=self.header,
             dtype=np.float32,
         )
+
+    def load_data(self) -> Union[List, pd.DataFrame]:
+        """
+        loads data into data variable of class
+        Parameters:
+        ----------
+        None
+        ----------
+        Returs:
+        None
+        """
+        data = []
+        self.file_path, self.time = self.parse_stats_directory()
+        self.read_header(self.file_path[0])
+
+        if self.columns is not None:
+            self.columns_index = self.column_handler_key2num(self.columns)
+
+        cols = None
+        if self.columns:
+            cols = self.columns_index
+        for file in self.file_path:
+            dd = np.array(np.loadtxt(file, usecols=cols))
+            # dd = pd.DataFrame(
+            #     data=dd, index=dd[:, 0], columns=self.header, dtype=np.float32
+            # )
+            data = [*data, dd]
+        self.data = np.array(data)
+        data = np.concatenate(data)
+        self.space = np.loadtxt(self.file_path[0], usecols=0)
+        indexes = pd.MultiIndex.from_product(
+            [self.time, self.space],
+            names=("time", "k")
+        )
+        columns = self.header
+        data = pd.DataFrame(data, columns=columns, index=indexes)
+        return data
+
+        # data = np.array(data)
+        # self.data = data
+        # self.shape = self.data.shape
+        # self.space = self.data[0, :, 0]
+        # data = np.loadtxt(file)
+        # data = np.array(data)
+        # self.shape = data.shape
+        # self.space = data[:, 0]
+        # return pd.DataFrame(
+        #     data=data,
+        #     index=self.space,
+        #     columns=self.header,
+        #     dtype=np.float32,
+        # )
+
+    def column_handler_key2num(
+        self,
+            variable: Union[str, list,
+                            int, npt.ArrayLike]
+    ) -> Tuple[int]:
+        """
+        column handler, handles which columns are to be saved. If you only study the
+        temperature for instance, there's no need for loading other variables. This function
+        returns the number of the column of interest
+        Parameters:
+        ----------
+        variable: Union[str, list, int, np.ndarray]
+            Variables of interest. Can be one or multiple of them.
+        ----------
+        index: Tuple[int]
+            The index(es) if the variables of interest inside the file for them to be loaded properly
+        """
+        if isinstance(variable, list):
+            return tuple(self.key2num(var) for var in variable)
+
+        if isinstance(variable, str):
+            return (self.key2num(variable),)
+        return (variable)
+
+    def integrate_statistics(self) -> None:
+        self.statistics = [(1/self.time[-1] - self.time[0]) * simpson(
+            self.data[..., num], x=self.time, axis=0
+        )
+            for num in range(self.data.shape[-1])]
