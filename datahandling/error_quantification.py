@@ -106,7 +106,7 @@ def assess_mean_error_across_quantities(
 
 
 def error_profile_quantification_order_1(x, y):
-    error = np.abs(x - y)
+    error = np.abs(x - y)/x.max()
     return np.mean(error, axis=(0, 1))
 
 
@@ -121,7 +121,7 @@ def compute_rms(x):
 def compute_rms_diff(x, y):
     xrms = compute_rms(x)
     yrms = compute_rms(y)
-    return np.abs((xrms-yrms)/xrms)
+    return np.abs((xrms-yrms)/xrms.max())
 
 
 def compute_gradient_error(x, y, mesh):
@@ -133,6 +133,8 @@ def compute_gradient_error(x, y, mesh):
 
 def compute_all_errors(x, y, mesh):
     error_profile = error_profile_quantification_order_1(x, y)
-    rms_profile = compute_rms_diff(x, y)
+    rms_profile = compute_rms(y)
     gradient_profile = compute_gradient_error(x, y, mesh)
-    return error_profile, rms_profile, gradient_profile
+    grady = np.gradient(y, *mesh, edge_order=2)
+    rms_gradient_profile = [compute_rms(gradi) for gradi in grady]
+    return error_profile, rms_profile, gradient_profile, rms_gradient_profile
