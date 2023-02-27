@@ -63,7 +63,7 @@ class DataLoader:
 
     def parse_stats_directory(self,
                               directory: Union[str, None] = None
-                              ) -> Tuple[list[str], npt.ArrayLike]:
+                              ) -> Tuple[List[str], npt.ArrayLike]:
         """
         Gives names of files needed, as well as time steps for respective stats
         ----------
@@ -352,7 +352,7 @@ class DataLoaderPandas:
     def parse_stats_directory(
         self,
             directory: Union[str, None] = None
-    ) -> Tuple[list[str], npt.ArrayLike]:
+    ) -> Tuple[List[str], npt.ArrayLike]:
         """
         Gives names of files needed, as well as time steps for respective stats
         ----------
