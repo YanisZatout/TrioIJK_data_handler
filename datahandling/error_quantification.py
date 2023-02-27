@@ -115,7 +115,7 @@ def error_profile_quantification_general(error):
 
 
 def compute_rms(x):
-    return np.sqrt(np.mean(x**2, axis=(0, 1)) - np.mean(x, axis=(0, 1))**2)
+    return np.mean(x**2, axis=(0, 1)) - np.mean(x, axis=(0, 1))**2
 
 
 def compute_rms_diff(x, y):
@@ -138,3 +138,127 @@ def compute_all_errors(x, y, mesh):
     grady = np.gradient(y, *mesh, edge_order=2)
     rms_gradient_profile = [compute_rms(gradi) for gradi in grady]
     return error_profile, rms_profile, gradient_profile, rms_gradient_profile
+
+
+def friction_quantities_les(df_les: List[pd.DataFrame], delta):
+    """
+    Computes the adim quantities of interest from a list of pandas dataframes
+    df_les: List[pd.DataFrame]
+        List of dataframes of statistics after steady state is achieved
+    delta: float
+        Canal half height
+    Returns:
+    u_tau:
+        Friction velocity
+    re_tau:
+        Friction Reynolds number
+    t_tau:
+        Friction temperature
+    y_plus:
+        Adim wall normal distance
+    """
+    utau_cold_les = [
+        np.sqrt(df["NU"].iloc[0] * df["U"].iloc[0] /
+                df["coordonnee_K"].iloc[0]) for df in df_les
+    ]
+    utau_hot_les = [
+        np.sqrt(df["NU"].iloc[-1] * df["U"].iloc[-1] /
+                (2*delta - df["coordonnee_K"].iloc[-1])) for df in df_les
+    ]
+
+    re_cold_les = [
+        h/df["NU"].iloc[0] * utau for df,
+        utau in zip(df_les, utau_cold_les)
+    ]
+    re_hot_les = [
+        h/df["NU"].iloc[-1] * utau for df,
+        utau in zip(df_les, utau_hot_les)
+    ]
+
+    ttau_cold_les = [
+        df["LAMBDADTDZ"].iloc[0]/(df["RHO"].iloc[0]*Cp*utau) for df, utau in zip(df_les, utau_cold_les)
+    ]
+    ttau_hot_les = [
+        df["LAMBDADTDZ"].iloc[-1]/(df["RHO"].iloc[-1]*Cp*utau) for df, utau in zip(df_les, utau_hot_les)
+    ]
+    # u_center_les
+    y_plus_cold = [
+        (df.index*utau/df["NU"]).iloc[:len(df["coordonnee_K"])//2]
+        for df, utau in zip(df_les, utau_cold_les)
+    ]
+
+    y_plus_hot = [
+        ((2*delta - df.index)*utau / df["NU"]
+         ).iloc[-len(df["coordonnee_K"])//2:]
+        for df, utau in zip(df_les, utau_cold_les)
+    ]
+    return utau_cold_les, utau_hot_les, re_cold_les, re_hot_les, ttau_cold_les, ttau_hot_les, y_plus_cold, y_plus_hot
+
+
+def friction_quantities_dns(df_les: List[pd.DataFrame], delta):
+    """
+    Computes the adim quantities of interest from a list of pandas dataframes
+    df_les: List[pd.DataFrame]
+        List of dataframes of statistics after steady state is achieved
+    delta: float
+        Canal half height
+    Returns:
+    u_tau:
+        Friction velocity
+    re_tau:
+        Friction Reynolds number
+    t_tau:
+        Friction temperature
+    y_plus:
+        Adim wall normal distance
+    """
+    utau_cold_les = [
+        np.sqrt(df["NU"].iloc[0] * df["U"].iloc[0] /
+                df["coordonnee_K"].iloc[0]) for df in df_les
+    ]
+    utau_hot_les = [
+        np.sqrt(df["NU"].iloc[-1] * df["U"].iloc[-1] /
+                (2*delta - df["coordonnee_K"].iloc[-1])) for df in df_les
+    ]
+
+    re_cold_les = [
+        h/df["NU"].iloc[0] * utau for df,
+        utau in zip(df_les, utau_cold_les)
+    ]
+    re_hot_les = [
+        h/df["NU"].iloc[-1] * utau for df,
+        utau in zip(df_les, utau_hot_les)
+    ]
+
+    ttau_cold_les = [
+        df["LAMBDADTDZ"].iloc[0]/(df["RHO"].iloc[0]*Cp*utau) for df, utau in zip(df_les, utau_cold_les)
+    ]
+    ttau_hot_les = [
+        df["LAMBDADTDZ"].iloc[-1]/(df["RHO"].iloc[-1]*Cp*utau) for df, utau in zip(df_les, utau_hot_les)
+    ]
+    # u_center_les
+    y_plus_cold = [
+        (df.index*utau/df["NU"]).iloc[:len(df.index)//2]
+        for df, utau in zip(df_les, utau_cold_les)
+    ]
+
+    y_plus_hot = [
+        ((2*delta - df.index)*utau / df["NU"]).iloc[-len(df.index)//2:]
+        for df, utau, re in zip(df_les, utau_cold_les, re_hot_les)
+    ]
+    return utau_cold_les[0], utau_hot_les[0], re_cold_les[0], re_hot_les[0], ttau_cold_les[0], ttau_hot_les[0], y_plus_cold[0], y_plus_hot[0]
+
+
+def adim_les_quantities(df: pd.DataFrame, delta):
+    utau_cold_les, \
+        utau_hot_les, \
+        re_cold_les, \
+        re_hot_les, \
+        ttau_cold_les, \
+        ttau_hot_les, \
+        y_plus_cold, \
+        y_plus_hot = friction_quantities_les(df, delta)
+    half_len = [len(dataframe)//2 for dataframe in df]
+    uplus_cold = [dataframe["U"]/utau for dataframe, utau in zip(df, utau_cold_les)]
+    uplus_hot = [dataframe["U"]/utau for dataframe in zip(df, utau_hot_les)]
+
