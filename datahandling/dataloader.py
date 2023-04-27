@@ -375,14 +375,15 @@ class DataLoaderPandas:
             directory = self.directory
         time = []
         file_path = []
-        for filename in os.listdir(self.directory):
-            f = os.path.join(self.directory, filename)
-            if os.path.isfile(f) and self.type_stat in filename:
-                file_path = [*file_path, f]
+        # for filename in os.listdir(self.directory):
+        #     f = os.path.join(self.directory, filename)
+        #     if os.path.isfile(f) and self.type_stat in filename:
+        #         file_path = [*file_path, f]
+        from glob import glob
+        file_path = sorted(glob(os.path.join(self.directory, f"{self.type_stat}_*")))
         file_path.sort()
         for fp in file_path:
-            fp = fp.replace(os.path.join(
-                self.directory, f"{self.type_stat}_"), "")
+            fp = fp.replace(os.path.join(self.directory, f"{self.type_stat}_"), "")
             fp = fp.replace(".txt", "")
             time = [*time, float(fp)]
         return file_path, np.array(time)
