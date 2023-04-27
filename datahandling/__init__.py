@@ -1,4 +1,3 @@
-from .dataformatter import format_model
 from .dataloader import (DataLoader,
                          DataLoaderPandas)
 from .dataplotter import (matplotlib_latex_params,
@@ -9,3 +8,4 @@ from .error_quantification import (compute_eps,
                                    friction_quantities_les)
 from .post_treatement import (generate_formulas,)
 from .quantities_of_interest import compute_rms_quantities
+from .dataplotter import PlotParams
