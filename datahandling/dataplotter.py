@@ -1,10 +1,11 @@
-from typing import Tuple, Union
+from typing import Union
 
 import re
 import pandas as pd
 from datahandling.dataloader import DataLoader, DataLoaderPandas
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 
 
 def matplotlib_latex_params(size=20) -> None:
@@ -182,4 +183,64 @@ def verif_convergence_irene_les(rep: str = "./"):
 
     )
 
-    # plt.show()
+
+class PlotParams(object):
+    def __init__(self, models_str, info_func=None, lines=["", "--", "-.", ":"], markers=None, hot_cold="cold", color_scaling_coeff=2):
+        if not info_func:
+            def info_func(model):
+                mesh = model.split(" ")[0]
+                model_tau = model.split()[1].split("-")[0]
+                model_pi = model.split()[1].split("-")[1].split("_")[0]
+                disc_qdm = model.split("_")[1]
+                disc_mass = model.split("_")[2]
+                return dict(mesh=mesh, models=model_tau+"-"+model_pi, disc=disc_qdm+"-"+disc_mass)
+        self.info_func = info_func
+        self.lines = lines
+        self.n_models = len(models_str)
+
+        models_str = [self.info_func(m) for m in models_str]
+
+        # Unreadable part
+        # At each unique different mesh, model and discretisation, we give
+        # an integer value
+
+        self.meshes = dict(zip(np.unique(np.array([m["mesh"] for m in models_str])).tolist(
+        ), np.arange(len(np.unique(np.array([m["mesh"] for m in models_str])).tolist()))))
+        self.models = dict(zip(np.unique(np.array([m["models"] for m in models_str])).tolist(
+        ), np.arange(len(np.unique(np.array([m["models"] for m in models_str])).tolist()))))
+        self.disc = dict(zip(np.unique(np.array([m["disc"] for m in models_str])).tolist(
+        ), np.arange(len(np.unique(np.array([m["disc"] for m in models_str])).tolist()))))
+
+        from matplotlib.lines import Line2D
+        if not markers:
+            self.markers = [m for m, func in Line2D.markers.items(
+            ) if func != 'nothing' and m not in Line2D.filled_markers]
+        else:
+            self.markers = markers
+
+        # Number of meshes
+        self.n_lines = len(self.meshes)*color_scaling_coeff
+        self.min_index_value = self.n_lines//3
+        c = np.arange(self.n_lines)[::-1]
+        # If the simulation is in an anisothermal setting
+        self.c_max = c_max = np.percentile(c, 100)
+        self.c_min = c_min = np.percentile(c, 0)
+        if hot_cold == "cold":
+            norm = mpl.colors.Normalize(vmin=c_min, vmax=c_max)
+            self.cmap = mpl.cm.ScalarMappable(norm=norm, cmap=mpl.cm.Blues)
+            self.cmap.set_array([])
+        else:
+            norm = mpl.colors.Normalize(vmin=c_min, vmax=c_max)
+            self.cmap = mpl.cm.ScalarMappable(norm=norm, cmap=mpl.cm.Reds)
+            self.cmap.set_array([])
+
+    def __getitem__(self, model):
+        a = self.info_func(model)
+        mesh = self.c_max - self.meshes[a["mesh"]]
+        model = self.models[a["models"]]
+        disc = self.disc[a["disc"]]
+        return dict(
+            c=self.cmap.to_rgba(mesh),
+            linestyle=self.lines[model],
+            marker=self.markers[disc]
+        )
