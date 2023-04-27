@@ -1,5 +1,5 @@
 from typing import List
-from interp import natspline1d, eval_all_spline_1d
+from scipy.interpolate import CubicSpline
 import numpy as np
 import pandas as pd
 
@@ -34,18 +34,12 @@ def compute_eps(Xles, Xdns, les_mesh, dns_mesh, h=15e-3):
         Quantification of error between the LES and DNS quantity
     """
     delta = h
-    nles, ndns = Xles.shape[0], Xdns.shape[0]
+    nles = Xles.shape[0]
     half_nles = nles//2
-    spline = natspline1d(dns_mesh, Xdns, ndns)
-    Xdns_interp = eval_all_spline_1d(
-        les_mesh,
-        dns_mesh,
-        ndns,
-        Xdns,
-        spline
-    )
-    half_length_les, half_length_dns = Xles[:half_nles], \
-        Xdns_interp[:half_nles]
+    spline = CubicSpline(dns_mesh, Xdns)
+    Xdns_interp = spline(les_mesh)
+    half_length_les, half_length_dns = Xles[:
+                                            half_nles], Xdns_interp[:half_nles]
 
     half_length_les_rev, half_length_dns_rev = Xles[half_nles:], \
         Xdns_interp[half_nles:]
@@ -55,20 +49,18 @@ def compute_eps(Xles, Xdns, les_mesh, dns_mesh, h=15e-3):
     # log(\frac{2\delta - y_{i+1}}{2-y_i})
     log_height = np.log(
         (2*delta - les_mesh[1:]) / (2*delta - les_mesh[:-1])
-    )[:half_nles]
+    )[-half_nles:]
 
     sum1 = np.sum(
         log_mesh * np.abs((half_length_les - half_length_dns)
                           * half_length_les)
-    ) / \
-        np.sum(log_mesh * half_length_dns**2)
+    ) / np.sum(log_mesh * half_length_dns**2)
 
     sum2 = np.sum(
         log_height * np.abs(
             (half_length_les_rev - half_length_dns_rev) * half_length_les_rev
         )
-    ) / \
-        np.sum(log_height * half_length_dns_rev ** 2)
+    ) / np.sum(log_height * half_length_dns_rev ** 2)
 
     return sum1 + sum2
 
@@ -259,6 +251,6 @@ def adim_les_quantities(df: pd.DataFrame, delta):
         y_plus_cold, \
         y_plus_hot = friction_quantities_les(df, delta)
     half_len = [len(dataframe)//2 for dataframe in df]
-    uplus_cold = [dataframe["U"]/utau for dataframe, utau in zip(df, utau_cold_les)]
+    uplus_cold = [dataframe["U"]/utau for dataframe,
+                  utau in zip(df, utau_cold_les)]
     uplus_hot = [dataframe["U"]/utau for dataframe in zip(df, utau_hot_les)]
-
