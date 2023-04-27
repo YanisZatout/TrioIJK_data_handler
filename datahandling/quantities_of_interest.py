@@ -58,7 +58,7 @@ def compute_rms_quantities(df_les: List[pd.DataFrame], df_dns: pd.DataFrame):
             - 2 * df_dns["NUTURB_YY_DVDY"] \
             + 1/3 * (df_dns["STRUCTURAL_UU"] + df_dns["STRUCTURAL_VV"] + df_dns["STRUCTURAL_WW"])/df_dns["RHO"] \
             + 2/3 * (df_dns["NUTURB_XX_DUDX"] + df_dns["NUTURB_YY_DVDY"] + df_dns["NUTURB_ZZ_DWDZ"]))
-     \
+
     uv_les = [(df["UW"]-df["U"]*df["W"]-df["STRUCTURAL_UW"]/df["RHO"]-(df["NUTURB_XZ_DUDZ"]+df["NUTURB_XZ_DWDX"])) for df in df_les]
     uv_dns = df_dns["UW"]-df_dns["U"]*df_dns["W"]-df_dns["STRUCTURAL_UW"]/df_dns["RHO"]-(df_dns["NUTURB_XZ_DUDZ"]+df_dns["NUTURB_XZ_DWDX"])
 
