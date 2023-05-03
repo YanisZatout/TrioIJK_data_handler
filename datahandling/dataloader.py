@@ -498,3 +498,8 @@ class DataLoaderPandas:
             self.data[..., num], x=self.time, axis=0
         )
             for num in range(self.data.shape[-1])]
+
+    @staticmethod
+    def mean_over_n_times(df: pd.DataFrame, n: int = 0):
+        assert n > 0, "You need to specify a positive number of timesteps to do the mean over"
+        return df.groupby("k").apply(lambda x: x.iloc[-n]).mean(level=0)
