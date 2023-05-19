@@ -117,15 +117,14 @@ def verify_convergence(rep: str = "./"):
     plt.show()
 
 
-def verif_convergence_irene_les(rep: str = "./"):
+def verif_convergence_irene_les(rep: str = "./", savepath=None):
     import pandas as pd
-    matplotlib_latex_params()
+    # matplotlib_latex_params()
     loader = DataLoaderPandas(rep, type_stat="statistiques")
     df: pd.DataFrame = loader.load_data()
     uu = compute_uu_middle_canal(loader, df)
     T = compute_T_middle_canal(loader, df)
     import os
-    home_directory = os.path.expanduser('~')
     # all = pd.concat([uu, T], axis=1)
     fig, axs = plt.subplots(1, len(uu.columns), figsize=(16, 9))
     for c, ax in zip(uu.columns, axs):
@@ -141,48 +140,41 @@ def verif_convergence_irene_les(rep: str = "./"):
     turb_visc_constants, turb_diff_constants = re.findall(
         r"\d+", turb_visc), re.findall(r"\d+", turb_diff)
 
-    turb_visc_constants_corrected = ["0."+x[1:]
-                                     for x in turb_visc_constants if x.startswith("0")]
-    turb_diff_constants_corrected = ["0."+x[1:]
-                                     for x in turb_diff_constants if x.startswith("0")]
+    turb_visc_constants_corrected = ["0."+x[1:] for x in turb_visc_constants if x.startswith("0")]
+    turb_diff_constants_corrected = ["0."+x[1:] for x in turb_diff_constants if x.startswith("0")]
 
     tau_string = ""
     for tau_constant, tau_bad_constant, tau_model in zip(turb_visc_constants_corrected, turb_visc_constants, turb_visc_models):
         tau_model = tau_model.split(tau_bad_constant)[0]
-        tau_string += f"{tau_constant}" + r"\tau^{" + f"{tau_model}" + r"}"
+        tau_string += f"{tau_constant}" + "tau^" + f"{tau_model}"
         if len(turb_visc_constants_corrected) > 1:
             tau_string += "+"
 
     pi_string = ""
     for pi_constant, pi_bad_constant, pi_model in zip(turb_diff_constants_corrected, turb_diff_constants, turb_diff_models):
         pi_model = pi_model.split(pi_bad_constant)[0]
-        pi_string += f"{pi_constant}" + r"\pi^{" + f"{pi_model}" + r"}"
+        pi_string += f"{pi_constant}" + "\pi^" + f"{pi_model}"
         if len(turb_visc_constants_corrected) > 1:
             pi_string += "+"
     fig.suptitle(
-        r"$\langle U \rangle$, $\langle U' U' \rangle$ middle canal for  $\tau_{ij}=" +
-        tau_string + r"$, $\pi_j=" + pi_string + "$"
-        f"qdm: {discretisation_qdm}, rho: {discretisation_rho}, mesh: {mesh}")
-    os.makedirs(os.path.join(home_directory,
-                             "simulation_advancement"), exist_ok=True)
-    plt.savefig(os.path.join(home_directory,
-                "simulation_advancement", f"{models}_{mesh}_velocity.pdf"), dpi=150)
+        "U, U' U'  middle canal for  tau_{ij}=" +
+        tau_string + ", \pi_j=" + pi_string + f" qdm: {discretisation_qdm}, rho: {discretisation_rho}, mesh: {mesh}")
+    plt.savefig(os.path.join(savepath,
+                "simulation_advancement", f"{models}_{mesh}_{discretisation_qdm}_{discretisation_rho}_velocity.pdf"), dpi=150)
 
     fig, axs = plt.subplots(1, len(T.columns), figsize=(16, 9))
     for c, ax in zip(T.columns, axs):
         T[c].plot(ylabel=c, ax=ax)
     plt.grid(True)
     fig.suptitle(
-        r"$\langle T \rangle$ and $\langle T' T' \rangle$ $\tau_{ij}=" +
-        tau_string + r"$, $\pi_j=" + pi_string + "$"
+        "T and T' T' tau_{ij}=" +
+        tau_string + ", pi_j=" + pi_string + f" qdm: {discretisation_qdm}, rho: {discretisation_rho}, mesh: {mesh}")
 
-        f"qdm: {discretisation_qdm}, rho: {discretisation_rho}, mesh: {mesh}")
     plt.savefig(
-        os.path.join(home_directory,
-                     "simulation_advancement", f"{models}_{mesh}_temperature.pdf"), dpi=150
+        os.path.join(savepath,
+                     "simulation_advancement", f"{models}_{mesh}_{discretisation_qdm}_{discretisation_rho}_temperature.pdf"), dpi=150
 
     )
-
 
 class PlotParams(object):
     def __init__(self, models_str, info_func=None, lines=["", "--", "-.", ":"], markers=None, hot_cold="cold", color_scaling_coeff=2):
