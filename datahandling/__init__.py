@@ -1,3 +1,4 @@
+from .dataformatter import format_model
 from .dataloader import (DataLoader,
                          DataLoaderPandas)
 from .dataplotter import (matplotlib_latex_params)
