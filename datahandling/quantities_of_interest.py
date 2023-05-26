@@ -97,7 +97,9 @@ def compute_rms_quantities(df_les: List[pd.DataFrame], df_dns: pd.DataFrame):
 
 def mean_over_n_times(df: pd.DataFrame, n: int = 0):
     assert n > 0, "You need to specify a positive number of timesteps to do the mean over"
-    return df.groupby("k").apply(lambda x: x.iloc[-n]).groupby(level=0).mean()
+    times = df.index.get_level_values(0)
+    time = times.unique(0)
+    return df.loc[times >= time[-n]].groupby(level=1).mean()
 
 
 def reynolds_bulk_each_time(df: pd.DataFrame, h: float):
