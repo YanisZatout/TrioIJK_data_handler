@@ -106,7 +106,10 @@ def reynolds_bulk_each_time(df: pd.DataFrame, h: float):
     """
     Returns the bulk Reynolds number for each time step
     """
-    return df["U"].groupby("time").apply(lambda x: x.mean()) * h / df["NU"].mean()
+    return df["U"].groupby("time").apply(lambda x: x.mean()) \
+        * h \
+        * df["RHO"].groupby("time").apply(lambda x: x.mean()) \
+        / df["NU"].groupby("time").apply(lambda x: x.mean())
 
 
 def reynolds_bulk(df: pd.DataFrame, h: float):
