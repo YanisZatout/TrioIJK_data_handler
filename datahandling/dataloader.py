@@ -380,10 +380,12 @@ class DataLoaderPandas:
         #     if os.path.isfile(f) and self.type_stat in filename:
         #         file_path = [*file_path, f]
         from glob import glob
-        file_path = sorted(glob(os.path.join(self.directory, f"{self.type_stat}_*")))
+        file_path = sorted(
+            glob(os.path.join(self.directory, f"{self.type_stat}_*")))
         file_path.sort()
         for fp in file_path:
-            fp = fp.replace(os.path.join(self.directory, f"{self.type_stat}_"), "")
+            fp = fp.replace(os.path.join(
+                self.directory, f"{self.type_stat}_"), "")
             fp = fp.replace(".txt", "")
             time = [*time, float(fp)]
         return file_path, np.array(time)
@@ -417,7 +419,7 @@ class DataLoaderPandas:
             dtype=np.float32,
         )
 
-    def load_data(self) -> Union[List, pd.DataFrame]:
+    def load_data(self, *, verbose=False) -> Union[List, pd.DataFrame]:
         """
         loads data into data variable of class
         Parameters:
@@ -438,10 +440,9 @@ class DataLoaderPandas:
         if self.columns:
             cols = self.columns_index
         for file in self.file_path:
+            if verbose:
+                print(file)
             dd = np.array(np.loadtxt(file, usecols=cols))
-            # dd = pd.DataFrame(
-            #     data=dd, index=dd[:, 0], columns=self.header, dtype=np.float32
-            # )
             data = [*data, dd]
         self.data = np.array(data)
         data = np.concatenate(data)
@@ -502,4 +503,4 @@ class DataLoaderPandas:
     @staticmethod
     def mean_over_n_times(df: pd.DataFrame, n: int = 0):
         assert n > 0, "You need to specify a positive number of timesteps to do the mean over"
-        return df.groupby("k").apply(lambda x: x.iloc[-n]).mean(level=0)
+        return df.groupby("k").apply(lambda x: x.iloc[-n]).groupby(level=0).mean()
