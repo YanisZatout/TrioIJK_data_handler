@@ -6,7 +6,7 @@ import os
 from numpy import typing as npt
 import pandas as pd
 from scipy.integrate import simpson
-
+from natsort import natsorted
 
 class DataLoader:
     """
@@ -439,7 +439,7 @@ class DataLoaderPandas:
         cols = None
         if self.columns:
             cols = self.columns_index
-        for file in self.file_path:
+        for file in natsorted(self.file_path):
             if verbose:
                 print(file)
             dd = np.array(np.loadtxt(file, usecols=cols))
