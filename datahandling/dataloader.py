@@ -1,12 +1,11 @@
 from typing import List, Tuple, Union
 import re
 import numpy as np
-import sys
 import os
 from numpy import typing as npt
 import pandas as pd
 from scipy.integrate import simpson
-from natsort import natsorted
+
 
 class DataLoader:
     """
@@ -431,6 +430,10 @@ class DataLoaderPandas:
         """
         data = []
         self.file_path, self.time = self.parse_stats_directory()
+        self.sorted_file_path = sorted(
+            self.file_path,
+            key=lambda x: x.split(self.type_stat+"_")[1].split(".txt")
+        )
         self.read_header(self.file_path[0])
 
         if self.columns is not None:
@@ -439,7 +442,7 @@ class DataLoaderPandas:
         cols = None
         if self.columns:
             cols = self.columns_index
-        for file in natsorted(self.file_path):
+        for file in self.sorted_file_path:
             if verbose:
                 print(file)
             dd = np.array(np.loadtxt(file, usecols=cols))
