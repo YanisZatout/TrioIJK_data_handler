@@ -432,7 +432,7 @@ class DataLoaderPandas:
         self.file_path, self.time = self.parse_stats_directory()
         self.sorted_file_path = sorted(
             self.file_path,
-            key=lambda x: x.split(self.type_stat+"_")[1].split(".txt")
+            key=lambda x: float(x.split(self.type_stat+"_")[1].split(".txt")[0])
         )
         self.read_header(self.file_path[0])
 
