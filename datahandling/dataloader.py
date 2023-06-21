@@ -359,6 +359,26 @@ class DataLoaderPandas:
         self.key2num_dict = {h: i for i, h in enumerate(self.header)}
         self.num2key_dict = {i: h for i, h in enumerate(self.header)}
 
+    @staticmethod
+    def creation_date(path_to_file: str):
+        """
+        Try to get the date that a file was created, falling back to when it
+        was last modified if that isn't possible.
+        See http://stackoverflow.com/a/39501288/1709587 for explanation.
+        """
+
+        import platform
+        if platform.system() == 'Windows':
+            return os.path.getctime(path_to_file)
+        else:
+            stat = os.stat(path_to_file)
+            try:
+                return stat.st_birthtime
+            except AttributeError:
+                # We're probably on Linux. No easy way to get creation dates here,
+                # so we'll settle for when its content was last modified.
+                return stat.st_mtime
+
     def parse_stats_directory(
         self,
             directory: Union[str, None] = None,
@@ -395,12 +415,13 @@ class DataLoaderPandas:
             )
         )
         # If we only want the last 24 hours files
+        import time
         if last_24h:
             last_24h_files = []
             import datetime as dt
             today = dt.datetime.now().date()
             for file in file_path:
-                if dt.datetime.fromtimestamp(os.path.getctime(file)) == today:
+                if abs(self.creation_date(file) - time.time()) <= 24*60*60:
                     last_24h_files.append(file)
             file_path = last_24h_files
 
