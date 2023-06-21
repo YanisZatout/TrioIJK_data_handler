@@ -85,14 +85,13 @@ class DataLoader:
             directory = self.directory
         time = []
         file_path = []
-        for filename in os.listdir(self.directory):
-            f = os.path.join(self.directory, filename)
-            if os.path.isfile(f) and self.type_stat in filename:
-                file_path = [*file_path, f]
-        file_path.sort()
+        from glob import glob
+        from os.path import join
+        file_path = glob(join(self.directory, self.type_stat+"*.txt"))
+
         for fp in file_path:
-            fp = fp.replace(os.path.join(
-                self.directory, f"{self.type_stat}_"), "")
+            fp = fp.replace(os.path.join(self.directory.replace(
+                "*", ""), f"{self.type_stat}_"), "")
             fp = fp.replace(".txt", "")
             time = [*time, float(fp)]
         return file_path, np.array(time)
@@ -299,15 +298,26 @@ class DataLoader:
 
 
 class DataLoaderPandas:
+    """
+    Class that reads a specific directory to get statistics related to
+    a TrioIJK simulations
+    """
+
     def __init__(
         self,
-            directory: str = "rep22",
-            type_stat: str = "statistiques",
+            directory: str = "./",
+            type_stat: Union[str, None] = None,
             columns: Union[str, int, None] = None,
             separator: str = "\s",
             type_file: str = ".txt"
     ):
+        """
+        The initialisation function for the class. For a specific directory
+        parses the statistics text files. Statistics can be mean over space,
+        or mean over space and time
+        """
         self.directory = directory
+        assert type_stat is not None, "You need to provide a type of statistics, beeing either 'statistiques' or 'moyenne_spatiale'"
         self.type_stat = type_stat
         self.columns = columns
         self.separator = separator
@@ -374,19 +384,18 @@ class DataLoaderPandas:
             directory = self.directory
         time = []
         file_path = []
-        # for filename in os.listdir(self.directory):
-        #     f = os.path.join(self.directory, filename)
-        #     if os.path.isfile(f) and self.type_stat in filename:
-        #         file_path = [*file_path, f]
         from glob import glob
         file_path = sorted(
-            glob(os.path.join(self.directory, f"{self.type_stat}_*")))
-        file_path.sort()
-        for fp in file_path:
-            fp = fp.replace(os.path.join(
-                self.directory, f"{self.type_stat}_"), "")
-            fp = fp.replace(".txt", "")
-            time = [*time, float(fp)]
+            glob(os.path.join(self.directory, f"{self.type_stat}_*")),
+            key=lambda x: float(
+                    x.split(self.type_stat+"_") [1].split(".txt")[0]
+                )
+        )
+
+        import re
+
+        pattern = f'[^/]+/{self.type_stat}_(\\d+\\.\\d+)\\.txt'
+        time = [float(match) for fp in file_path for match in re.findall(pattern, fp)] 
         return file_path, np.array(time)
 
     def load_last(self) -> pd.DataFrame:
@@ -432,7 +441,7 @@ class DataLoaderPandas:
         self.file_path, self.time = self.parse_stats_directory()
         self.sorted_file_path = sorted(
             self.file_path,
-            key=lambda x: float(x.split(self.type_stat+"_")[1].split(".txt")[0])
+            key=lambda x: float(x.split(self.type_stat+"_") [1].split(".txt")[0])
         )
         self.read_header(self.file_path[0])
 
@@ -457,21 +466,6 @@ class DataLoaderPandas:
         columns = self.header
         data = pd.DataFrame(data, columns=columns, index=indexes)
         return data
-
-        # data = np.array(data)
-        # self.data = data
-        # self.shape = self.data.shape
-        # self.space = self.data[0, :, 0]
-        # data = np.loadtxt(file)
-        # data = np.array(data)
-        # self.shape = data.shape
-        # self.space = data[:, 0]
-        # return pd.DataFrame(
-        #     data=data,
-        #     index=self.space,
-        #     columns=self.header,
-        #     dtype=np.float32,
-        # )
 
     def column_handler_key2num(
         self,
