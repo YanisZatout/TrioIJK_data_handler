@@ -5,6 +5,8 @@ import os
 from numpy import typing as npt
 import pandas as pd
 from scipy.integrate import simpson
+import re
+from glob import glob
 
 
 class DataLoader:
@@ -85,7 +87,6 @@ class DataLoader:
             directory = self.directory
         time = []
         file_path = []
-        from glob import glob
         from os.path import join
         file_path = glob(join(self.directory, self.type_stat+"*.txt"))
 
@@ -391,9 +392,6 @@ class DataLoaderPandas:
                     x.split(self.type_stat+"_") [1].split(".txt")[0]
                 )
         )
-
-        import re
-
         pattern = f'[^/]+/{self.type_stat}_(\\d+\\.\\d+)\\.txt'
         time = [float(match) for fp in file_path for match in re.findall(pattern, fp)] 
         return file_path, np.array(time)
@@ -439,10 +437,6 @@ class DataLoaderPandas:
         """
         data = []
         self.file_path, self.time = self.parse_stats_directory()
-        self.sorted_file_path = sorted(
-            self.file_path,
-            key=lambda x: float(x.split(self.type_stat+"_") [1].split(".txt")[0])
-        )
         self.read_header(self.file_path[0])
 
         if self.columns is not None:
@@ -451,9 +445,9 @@ class DataLoaderPandas:
         cols = None
         if self.columns:
             cols = self.columns_index
-        for file in self.sorted_file_path:
+        for file, time in zip(self.file_path, self.time):
             if verbose:
-                print(file)
+                print(file, time)
             dd = np.array(np.loadtxt(file, usecols=cols))
             data = [*data, dd]
         self.data = np.array(data)
