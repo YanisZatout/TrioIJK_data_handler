@@ -361,7 +361,8 @@ class DataLoaderPandas:
 
     def parse_stats_directory(
         self,
-            directory: Union[str, None] = None
+            directory: Union[str, None] = None,
+            last_24h: bool = False
     ) -> Tuple[List[str], npt.ArrayLike]:
         """
         Gives names of files needed, as well as time steps for respective stats
@@ -386,14 +387,43 @@ class DataLoaderPandas:
         time = []
         file_path = []
         from glob import glob
+        # Match stat files
         file_path = sorted(
             glob(os.path.join(self.directory, f"{self.type_stat}_*")),
             key=lambda x: float(
-                    x.split(self.type_stat+"_") [1].split(".txt")[0]
-                )
+                x.split(self.type_stat+"_")[1].split(".txt")[0]
+            )
         )
+        # If we only want the last 24 hours files
+        if last_24h:
+            last_24h_files = []
+            import datetime as dt
+            today = dt.datetime.now().date()
+            for file in file_path:
+                if dt.datetime.fromtimestamp(os.path.getctime(file)) == today:
+                    last_24h_files.append(file)
+            file_path = last_24h_files
+
+        # Remove duplicates
+        unique_files = set()
+        duplicates = []
+        final_files = []
+        for file_paths in file_path:
+            file_name = os.path.basename(file_paths)
+            floating_point_number = file_name.split(
+                self.type_stat + "_")[1].split(".txt")[0]
+            if floating_point_number in unique_files:
+                duplicates.append(file_paths)
+            else:
+                unique_files.add(floating_point_number)
+                final_files.append(
+                    f'{os.path.dirname(file_paths)}/{self.type_stat}_{floating_point_number}.txt')
+
+        file_path = final_files
+
         pattern = f'[^/]+/{self.type_stat}_(\\d+\\.\\d+)\\.txt'
-        time = [float(match) for fp in file_path for match in re.findall(pattern, fp)] 
+        time = [float(match)
+                for fp in file_path for match in re.findall(pattern, fp)]
         return file_path, np.array(time)
 
     def load_last(self) -> pd.DataFrame:
@@ -461,6 +491,42 @@ class DataLoaderPandas:
         data = pd.DataFrame(data, columns=columns, index=indexes)
         return data
 
+    def load_last_24h(self, *, verbose=False) -> Union[List, pd.DataFrame]:
+        """
+        loads data into data variable of class
+        Parameters:
+        ----------
+        None
+        ----------
+        Returs:
+        None
+        """
+        data = []
+        self.file_path, self.time = self.parse_stats_directory(last_24h=True)
+        self.read_header(self.file_path[0])
+
+        if self.columns is not None:
+            self.columns_index = self.column_handler_key2num(self.columns)
+
+        cols = None
+        if self.columns:
+            cols = self.columns_index
+        for file, time in zip(self.file_path, self.time):
+            if verbose:
+                print(file, time)
+            dd = np.array(np.loadtxt(file, usecols=cols))
+            data = [*data, dd]
+        self.data = np.array(data)
+        data = np.concatenate(data)
+        self.space = np.loadtxt(self.file_path[0], usecols=0)
+        indexes = pd.MultiIndex.from_product(
+            [self.time, self.space],
+            names=("time", "k")
+        )
+        columns = self.header
+        data = pd.DataFrame(data, columns=columns, index=indexes)
+        return data
+
     def column_handler_key2num(
         self,
             variable: Union[str, list,
@@ -491,7 +557,7 @@ class DataLoaderPandas:
         )
             for num in range(self.data.shape[-1])]
 
-    @staticmethod
+    @ staticmethod
     def mean_over_n_times(df: pd.DataFrame, n: int = 0):
         assert n > 0, "You need to specify a positive number of timesteps to do the mean over"
         return df.groupby("k").apply(lambda x: x.iloc[-n]).groupby(level=0).mean()
