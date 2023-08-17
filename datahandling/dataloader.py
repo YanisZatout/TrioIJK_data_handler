@@ -485,6 +485,11 @@ class DataLoaderPandas:
         Returs:
         None
         """
+        if verbose and pbar:
+            import warnings
+            warnings.warn("Using verbose and pbar flags together shows ugly output when used")
+
+
         self.file_path, self.time = self.parse_stats_directory()
         self.read_header(self.file_path[0])
 
@@ -500,10 +505,9 @@ class DataLoaderPandas:
         else:
             progress_bar = zip(self.file_path, self.time)
         if parallel:
-            raise NotImplemented("This functionallity is not implemented yet")
             try:
                 import dask.array as da
-                from dask import delayed
+                from dask import delayed, compute
             except ImportError:
                 return None
             data = []
@@ -512,7 +516,8 @@ class DataLoaderPandas:
                     print(file, time)
                 dd = delayed(np.loadtxt)(file, usecols=cols) 
                 data.append(dd)
-            self.data = np.array(data)
+            tuple_of_data = compute(*data)
+            data = self.data = np.concatenate(tuple_of_data)
             self.space = np.loadtxt(self.file_path[0], usecols=0)
             indexes = pd.MultiIndex.from_product(
                 [self.time, self.space],
