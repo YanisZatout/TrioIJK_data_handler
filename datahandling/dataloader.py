@@ -5,7 +5,6 @@ import os
 from numpy import typing as npt
 import pandas as pd
 from scipy.integrate import simpson
-import re
 from glob import glob
 
 
@@ -476,7 +475,7 @@ class DataLoaderPandas:
             dtype=np.float32,
         )
 
-    def load_data(self, *, verbose=False) -> Union[List, pd.DataFrame]:
+    def load_data(self, *, verbose=False, parallel=False, pbar=False) -> Union[List, pd.DataFrame, None]:
         """
         loads data into data variable of class
         Parameters:
@@ -486,7 +485,6 @@ class DataLoaderPandas:
         Returs:
         None
         """
-        data = []
         self.file_path, self.time = self.parse_stats_directory()
         self.read_header(self.file_path[0])
 
@@ -496,21 +494,50 @@ class DataLoaderPandas:
         cols = None
         if self.columns:
             cols = self.columns_index
-        for file, time in zip(self.file_path, self.time):
-            if verbose:
-                print(file, time)
-            dd = np.array(np.loadtxt(file, usecols=cols))
-            data = [*data, dd]
-        self.data = np.array(data)
-        data = np.concatenate(data)
-        self.space = np.loadtxt(self.file_path[0], usecols=0)
-        indexes = pd.MultiIndex.from_product(
-            [self.time, self.space],
-            names=("time", "k")
-        )
-        columns = self.header
-        data = pd.DataFrame(data, columns=columns, index=indexes)
-        return data
+        if pbar:
+            from tqdm import tqdm
+            progress_bar = tqdm(zip(self.file_path, self.time), total=len(self.file_path))
+        else:
+            progress_bar = zip(self.file_path, self.time)
+        if parallel:
+            raise NotImplemented("This functionallity is not implemented yet")
+            try:
+                import dask.array as da
+                from dask import delayed
+            except ImportError:
+                return None
+            data = []
+            for file, time in progress_bar:
+                if verbose:
+                    print(file, time)
+                dd = delayed(np.loadtxt)(file, usecols=cols) 
+                data.append(dd)
+            self.data = np.array(data)
+            self.space = np.loadtxt(self.file_path[0], usecols=0)
+            indexes = pd.MultiIndex.from_product(
+                [self.time, self.space],
+                names=("time", "k")
+            )
+            columns = self.header
+            data = pd.DataFrame(data, columns=columns, index=indexes)
+            return data
+        else:
+            data = []
+            for file, time in progress_bar:
+                if verbose:
+                    print(file, time)
+                dd = np.array(np.loadtxt(file, usecols=cols))
+                data = [*data, dd]
+            self.data = np.array(data)
+            data = np.concatenate(data)
+            self.space = np.loadtxt(self.file_path[0], usecols=0)
+            indexes = pd.MultiIndex.from_product(
+                [self.time, self.space],
+                names=("time", "k")
+            )
+            columns = self.header
+            data = pd.DataFrame(data, columns=columns, index=indexes)
+            return data
 
     def load_last_24h(self, *, verbose=False) -> Union[List, pd.DataFrame]:
         """
