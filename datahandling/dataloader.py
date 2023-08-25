@@ -403,22 +403,29 @@ class DataLoaderPandas:
         """
         if directory is None:
             directory = self.directory
+        if isinstance(directory, (list, tuple)) and len(directory) > 1:
+            # In the case the user provides multiple directories to explore:
+            from glob import iglob
+            def multi_glob(patterns):
+                for pattern in patterns:
+                    yield from iglob(pattern)
+            directory_and_pattern = [os.path.join(d, f"{self.type_stat}_*") for d in directory]
+            list_of_files = list(multi_glob(directory_and_pattern))
+        else:
+            # In the case the user gave one directory
+            from glob import glob
+            list_of_files = glob(os.path.join(self.directory, f"{self.type_stat}_*")),
+
         time = []
         file_path = []
-        from glob import glob
         # Match stat files
-        file_path = sorted(
-            glob(os.path.join(self.directory, f"{self.type_stat}_*")),
-            key=lambda x: float(
-                x.split(self.type_stat+"_")[1].split(".txt")[0]
-            )
-        )
+        file_path = sorted(list_of_files, key=lambda x: float(x.split(self.type_stat+"_")[1].split(".txt")[0]))
         # If we only want the last 24 hours files
         import time
         if last_24h:
             last_24h_files = []
-            import datetime as dt
-            today = dt.datetime.now().date()
+            """ import datetime as dt """
+            """ today = dt.datetime.now().date() """
             for file in file_path:
                 if abs(self.creation_date(file) - time.time()) <= 24*60*60:
                     last_24h_files.append(file)
