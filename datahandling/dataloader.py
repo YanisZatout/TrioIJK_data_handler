@@ -414,7 +414,7 @@ class DataLoaderPandas:
         else:
             # In the case the user gave one directory
             from glob import glob
-            list_of_files = glob(os.path.join(self.directory, f"{self.type_stat}_*")),
+            list_of_files = glob(os.path.join(self.directory, f"{self.type_stat}_*"))
 
         time = []
         file_path = []
