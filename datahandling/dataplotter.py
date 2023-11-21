@@ -121,8 +121,12 @@ def verif_convergence_irene_les(rep: str = "./", savepath=None):
     # matplotlib_latex_params()
     loader = DataLoaderPandas(rep, type_stat="statistiques")
     df: pd.DataFrame = loader.load_data()
+    df_24h: pd.DataFrame = loader.load_last_24h()
     uu = compute_uu_middle_canal(loader, df)
     T = compute_T_middle_canal(loader, df)
+
+    uu24h = compute_uu_middle_canal(loader, df_24h)
+    T24h = compute_T_middle_canal(loader, df_24h)
     import os
     # all = pd.concat([uu, T], axis=1)
     fig, axs = plt.subplots(1, len(uu.columns), figsize=(16, 9))
@@ -159,7 +163,7 @@ def verif_convergence_irene_les(rep: str = "./", savepath=None):
         "U, U' U'  middle canal for  tau_{ij}=" +
         tau_string + ", \pi_j=" + pi_string + f" qdm: {discretisation_qdm}, rho: {discretisation_rho}, mesh: {mesh}")
     plt.savefig(os.path.join(savepath,
-                "simulation_advancement", f"{models}_{mesh}_{discretisation_qdm}_{discretisation_rho}_velocity.pdf"), dpi=150)
+                 f"{models}_{mesh}_{discretisation_qdm}_{discretisation_rho}_velocity.pdf"), dpi=150)
 
     fig, axs = plt.subplots(1, len(T.columns), figsize=(16, 9))
     for c, ax in zip(T.columns, axs):
@@ -169,12 +173,36 @@ def verif_convergence_irene_les(rep: str = "./", savepath=None):
         "T and T' T' tau_{ij}=" +
         tau_string + ", pi_j=" + pi_string + f" qdm: {discretisation_qdm}, rho: {discretisation_rho}, mesh: {mesh}")
 
-    plt.savefig(
-        os.path.join(savepath,
-                     "simulation_advancement", f"{models}_{mesh}_{discretisation_qdm}_{discretisation_rho}_temperature.pdf"), dpi=150
+    plt.savefig(os.path.join(savepath, f"{models}_{mesh}_{discretisation_qdm}_{discretisation_rho}_temperature.pdf"), dpi=150)
 
-    )
-    return
+    ### DEFINE 24h part
+    # Convergence check
+    converged = False
+    upct = np.abs((uu24h.iloc[:, 0].max() - uu24h.iloc[:, 0].min())/uu24h.iloc[:, 0].min()) * 100
+    uuptc = np.abs((uu24h.iloc[:, 1].max() - uu24h.iloc[:, 1].min())/uu24h.iloc[:, 1].min()) * 100
+    Tpct = np.abs((T24h.iloc[:, 0].max() - T24h.iloc[:, 0].min())/T24h.iloc[:, 0].min()) * 100
+    TTpct = np.abs((T24h.iloc[:, 1].max() - T24h.iloc[:, 1].min())/T24h.iloc[:, 1].min()) * 100
+    if upct < 1 and uuptc < 1 and Tpct < 1 and TTpct < 1:
+        converged = True
+    # End of convergence check
+
+    fig, axs = plt.subplots(1, len(uu.columns), figsize=(16, 9))
+    for c, ax in zip(uu.columns, axs):
+        uu24h[c].plot(ylabel=c, ax=ax)
+        plt.grid(True)
+
+    fig.suptitle(fr"$\langle U \rangle$, $\langle U' U' \rangle$ last 24h, Convergence: {converged}")
+    plt.savefig(os.path.join(savepath, f"centerline_streamwise_velocity_24h.pdf"), dpi=150)
+
+    fig, axs = plt.subplots(1, len(T.columns), figsize=(16, 9))
+    for c, ax in zip(T.columns, axs):
+        T24h[c].plot(ylabel=c, ax=ax)
+    plt.grid(True)
+    fig.suptitle(fr"$\langle T \rangle$, $\langle T' T' \rangle$ last24h, Convergence: {converged}")
+
+    plt.savefig(os.path.join(savepath, f"centerline_streamwise_velocity_temperature_24h.pdf"), dpi=150)
+    ### END 24h part
+    return uu24h, T24h
 
 def verif_convergence_irene_dns(rep: str = "./", savepath=None):
     import pandas as pd
@@ -221,6 +249,7 @@ def verif_convergence_irene_dns(rep: str = "./", savepath=None):
     fig.suptitle(r"$\langle T \rangle$, $\langle T' T' \rangle$ last24h")
 
     plt.savefig(os.path.join(savepath, f"centerline_streamwise_velocity_temperature_24h.pdf"), dpi=150)
+    return None
 
 class PlotParams(object):
     def __init__(self, models_str, info_func=None, lines=["", "--", "-.", ":"], markers=None, hot_cold="cold", color_scaling_coeff=2):
