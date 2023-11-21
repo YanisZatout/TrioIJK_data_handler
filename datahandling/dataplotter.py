@@ -1,5 +1,4 @@
 from typing import Union
-
 import re
 import pandas as pd
 from datahandling.dataloader import DataLoader, DataLoaderPandas
@@ -175,6 +174,53 @@ def verif_convergence_irene_les(rep: str = "./", savepath=None):
                      "simulation_advancement", f"{models}_{mesh}_{discretisation_qdm}_{discretisation_rho}_temperature.pdf"), dpi=150
 
     )
+    return
+
+def verif_convergence_irene_dns(rep: str = "./", savepath=None):
+    import pandas as pd
+    # matplotlib_latex_params()
+    loader = DataLoaderPandas(rep, type_stat="statistiques")
+    df: pd.DataFrame = loader.load_data()
+    df_24h: pd.DataFrame = loader.load_last_24h()
+    uu = compute_uu_middle_canal(loader, df)
+    T =  compute_T_middle_canal(loader, df)
+
+    uu24h = compute_uu_middle_canal(loader, df_24h)
+    T24h  = compute_T_middle_canal (loader, df_24h)
+    import os
+
+    fig, axs = plt.subplots(1, len(uu.columns), figsize=(16, 9))
+    for c, ax in zip(uu.columns, axs):
+        uu[c].plot(ylabel=c, ax=ax)
+        plt.grid(True)
+
+    fig.suptitle(r"$\langle U \rangle$, $\langle U' U' \rangle$")
+    plt.savefig(os.path.join(savepath, f"centerline_streamwise_velocity.pdf"), dpi=150)
+
+    fig, axs = plt.subplots(1, len(T.columns), figsize=(16, 9))
+    for c, ax in zip(T.columns, axs):
+        T[c].plot(ylabel=c, ax=ax)
+    plt.grid(True)
+    fig.suptitle(r"$\langle T \rangle$, $\langle T' T' \rangle$")
+
+    plt.savefig(os.path.join(savepath, f"centerline_streamwise_temperature.pdf"), dpi=150)
+
+
+    fig, axs = plt.subplots(1, len(uu.columns), figsize=(16, 9))
+    for c, ax in zip(uu.columns, axs):
+        uu24h[c].plot(ylabel=c, ax=ax)
+        plt.grid(True)
+
+    fig.suptitle(r"$\langle U \rangle$, $\langle U' U' \rangle$ last 24h")
+    plt.savefig(os.path.join(savepath, f"centerline_streamwise_velocity_24h.pdf"), dpi=150)
+
+    fig, axs = plt.subplots(1, len(T.columns), figsize=(16, 9))
+    for c, ax in zip(T.columns, axs):
+        T24h[c].plot(ylabel=c, ax=ax)
+    plt.grid(True)
+    fig.suptitle(r"$\langle T \rangle$, $\langle T' T' \rangle$ last24h")
+
+    plt.savefig(os.path.join(savepath, f"centerline_streamwise_velocity_temperature_24h.pdf"), dpi=150)
 
 class PlotParams(object):
     def __init__(self, models_str, info_func=None, lines=["", "--", "-.", ":"], markers=None, hot_cold="cold", color_scaling_coeff=2):

@@ -1,9 +1,42 @@
 import numpy as np
-from typing import List
+from typing import Dict, List, Tuple
 import pandas as pd
 
 
-def compute_rms_quantities(df_les: List[pd.DataFrame], df_dns: pd.DataFrame):
+def mean_quantities(df_les: List[pd.DataFrame], df_dns: pd.DataFrame, *, delta: float = 0.0029846) -> Tuple[Dict]:
+    utau_cold_les     = [np.sqrt(df["MU"]/df["RHO"] * df["U"]/           df.index[0]).iloc[  0] for df in df_les]
+    re_cold_les       = [(df["RHO"] * delta * utau / df["MU"]).iloc[0] for df, utau in zip(df_les, utau_cold_les)]
+    ttau_cold_les     = [
+        (df["LAMBDADTDZ"]/(df["RHO"] * Cp * (utau))).iloc[0] for df, utau in zip(df_les, utau_cold_les)
+    ]
+    y_plus_cold_les   = [((df.index.values/delta) * re)[:half] for df, re, half in zip(df_les, re_cold_les, half_les)]
+
+    utau_hot_les      = [np.sqrt(df["MU"]/df["RHO"] * df["U"]/(2*delta - df.index[-1])).iloc[-1] for df in df_les]
+    re_hot_les        = [(delta * utau / df["NU"]).iloc[-1] for df, utau in zip(df_les, utau_hot_les)]
+    ttau_hot_les      = [
+        (df["LAMBDADTDZ"]/(df["RHO"] * Cp * (utau))).iloc[-1] for df, utau in zip(df_les, utau_hot_les)
+    ]
+    y_plus_hot_les    = [((2*delta - df.index.values) / delta * re)[-half:] for df, re, half in zip(df_les, re_hot_les, half_les)]
+
+    les = {"utau_cold": utau_cold_les, "re_cold": re_cold_les, "ttau_cold": ttau_cold_les, "y_plus_cold": y_plus_cold_les,
+           "utau_hot": utau_hot_les, "re_hot": re_hot_les, "ttau_hot": ttau_hot_les,  "y_plus_hot": y_plus_hot_les}
+
+    half = len(df_dns.index)//2
+
+    utau_cold_dns     = np.sqrt(df_dns["MU"]/df_dns["RHO"] * df_dns["U"]/ df_dns.index[0]).iloc[0]
+    re_cold_dns       = (df_dns["RHO"] * delta * utau_cold_dns / df_dns["MU"]).iloc[0]
+    ttau_cold_dns     = (df_dns["LAMBDADTDZ"]/(df_dns["RHO"] * Cp * (utau_cold_dns))).iloc[0]
+    y_plus_cold_dns   = ((df_dns.index.values/delta) * re_cold_dns)[:half]
+
+    utau_hot_dns      = np.sqrt(df_dns["MU"]/df_dns["RHO"] * df_dns["U"]/(2*delta - df_dns.index[-1])).iloc[-1]
+    re_hot_dns        = (delta * utau_hot_dns / df_dns["NU"]).iloc[-1]
+    ttau_hot_dns      = (df_dns["LAMBDADTDZ"]/(df_dns["RHO"] * Cp * (utau_hot_dns))).iloc[-1]
+    y_plus_hot_dns    = ((2*delta - df_dns.index.values) / delta * re_hot_dns)[-half:]
+    dns = {"utau_cold": utau_cold_dns, "re_cold": re_cold_dns, "ttau_cold": ttau_cold_dns, "y_plus_cold": y_plus_cold_dns,
+           "utau_hot": utau_hot_dns, "re_hot": re_hot_dns, "ttau_hot": ttau_hot_dns,  "y_plus_hot": y_plus_hot_dns}
+    return les, dns
+
+def compute_rms_quantities(df_les: List[pd.DataFrame], df_dns: pd.DataFrame, Cp=1155):
     """
     Computes RMS quantities of interest:
     \langle u^{'2} \rangle ^{dev}
