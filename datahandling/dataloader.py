@@ -453,6 +453,36 @@ class DataLoaderPandas:
                 for fp in file_path for match in re.findall(pattern, fp)]
         return file_path, np.array(time)
 
+
+    def load_first(self) -> pd.DataFrame:
+        """
+        Loads data into class data variable for the last time
+        step for the given statistics
+        Parameters:
+        ----------
+        None
+        ----------
+        Returs:
+        None
+        """
+
+        data = []
+        self.file_path, self.time = self.parse_stats_directory()
+        last_time = f"{self.type_stat}_{self.time[0]}"
+        self.read_header(self.file_path[0])
+
+        file = self.file_path[0]
+        data = np.loadtxt(file)
+        data = np.array(data)
+        self.shape = data.shape
+        self.space = data[:, 0]
+        return pd.DataFrame(
+            data=data,
+            index=self.space,
+            columns=self.header,
+            dtype=np.float32,
+        )
+
     def load_last(self) -> pd.DataFrame:
         """
         Loads data into class data variable for the last time
