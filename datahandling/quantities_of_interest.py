@@ -3,7 +3,8 @@ from typing import Dict, List, Tuple
 import pandas as pd
 
 
-def mean_quantities(df_les: List[pd.DataFrame], df_dns: pd.DataFrame, *, delta: float = 0.0029846) -> Tuple[Dict]:
+def adim_qqty(df_les: List[pd.DataFrame], df_dns: pd.DataFrame, Cp=1155, *, delta: float = 0.0029846) -> Tuple[Dict]:
+    half_les = [len(df)//2 for df in df_les]
     utau_cold_les     = [np.sqrt(df["MU"]/df["RHO"] * df["U"]/           df.index[0]).iloc[  0] for df in df_les]
     re_cold_les       = [(df["RHO"] * delta * utau / df["MU"]).iloc[0] for df, utau in zip(df_les, utau_cold_les)]
     ttau_cold_les     = [
@@ -36,7 +37,7 @@ def mean_quantities(df_les: List[pd.DataFrame], df_dns: pd.DataFrame, *, delta: 
            "utau_hot": utau_hot_dns, "re_hot": re_hot_dns, "ttau_hot": ttau_hot_dns,  "y_plus_hot": y_plus_hot_dns}
     return les, dns
 
-def compute_rms_quantities(df_les: List[pd.DataFrame], df_dns: pd.DataFrame, Cp=1155):
+def compute_rms_quantities(df_les: List[pd.DataFrame], df_dns: pd.DataFrame, Cp=1155) -> Tuple[Dict]:
     """
     Computes RMS quantities of interest:
     \langle u^{'2} \rangle ^{dev}
@@ -124,8 +125,10 @@ def compute_rms_quantities(df_les: List[pd.DataFrame], df_dns: pd.DataFrame, Cp=
 
     theta_rms_les = [(sqrt(df["T2"]-df["T"]*df["T"])) for df in df_les]
     theta_rms_dns = (sqrt(df_dns["T2"]-df_dns["T"]*df_dns["T"]))
+    les = {"urms": urms_les, "vrms": vrms_les, "wrms": wrms_les, "uv": uv_les, "u_theta": u_theta_les, "v_theta": v_theta_les, "theta_rms": theta_rms_les}
+    dns = {"urms": urms_dns, "vrms": vrms_dns, "wrms": wrms_dns, "uv": uv_dns, "u_theta": u_theta_dns, "v_theta": v_theta_dns, "theta_rms": theta_rms_dns}
 
-    return (urms_les, urms_dns, vrms_les, vrms_dns, wrms_les, wrms_dns, uv_les, uv_dns, u_theta_les, u_theta_dns, v_theta_les, v_theta_dns, theta_rms_les, theta_rms_dns)
+    return les, dns
 
 
 def mean_over_n_times(df: pd.DataFrame, n: int = 0):
