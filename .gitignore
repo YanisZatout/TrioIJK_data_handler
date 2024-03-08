@@ -179,5 +179,4 @@ cython_debug/
 # End of https://www.toptal.com/developers/gitignore/api/python
 python_config.py
 
-dataformatter.py
 dns.data
