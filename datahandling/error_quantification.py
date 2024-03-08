@@ -64,6 +64,58 @@ def compute_eps(Xles, Xdns, les_mesh, dns_mesh, h=15e-3):
 
     return sum1 + sum2
 
+def compute_error_bars(df_les, df_dns, Cp=1155, *, delta: float = 0.0029846):
+    h = delta
+    from .quantities_of_interest import compute_rms_quantities
+    rms_les, rms_dns = compute_rms_quantities(df_les, df_dns, Cp)
+    urms_dns      = rms_dns["urms"]
+    vrms_dns      = rms_dns["vrms"]
+    wrms_dns      = rms_dns["wrms"]
+    uv_dns        = rms_dns["uv"]
+    u_theta_dns   = rms_dns["u_theta"]
+    v_theta_dns   = rms_dns["v_theta"]
+    theta_rms_dns = rms_dns["theta_rms"]
+
+    urms_les      = rms_les["urms"]      
+    vrms_les      = rms_les["vrms"]      
+    wrms_les      = rms_les["wrms"]      
+    uv_les        = rms_les["uv"]        
+    u_theta_les   = rms_les["u_theta"]   
+    v_theta_les   = rms_les["v_theta"]   
+    theta_rms_les = rms_les["theta_rms"] 
+    eps_u    = [compute_eps(df["U"].values.astype("float64"),          df_dns["U"].values.astype("float64"),          df.index.values.astype("float64"), df_dns.index.values.astype("float64"), h=delta)*100 for df in df_les]
+    eps_v    = [compute_eps(df["W"].values.astype("float64"),          df_dns["W"].values.astype("float64"),          df.index.values.astype("float64"), df_dns.index.values.astype("float64"), h=delta)*100 for df in df_les]
+    eps_t    = [compute_eps(df["T"].values.astype("float64"),          df_dns["T"].values.astype("float64"),          df.index.values.astype("float64"), df_dns.index.values.astype("float64"), h=delta)*100 for df in df_les]
+    eps_phi  = [compute_eps(df["LAMBDADTDZ"].values.astype("float64"), df_dns["LAMBDADTDZ"].values.astype("float64"), df.index.values.astype("float64"), df_dns.index.values.astype("float64"), h=delta)*100 for df in df_les]
+    eps_urms = [compute_eps(np.sqrt(np.abs(urms     .values.astype("float64"))), np.sqrt(np.abs(urms_dns     .values.astype("float64"))), df.index.values.astype("float64"), df_dns.index.values.astype("float64"), h=delta)*100 for df, urms      in zip(df_les, urms_les     )]
+    eps_vrms = [compute_eps(np.sqrt(np.abs(vrms     .values.astype("float64"))), np.sqrt(np.abs(vrms_dns     .values.astype("float64"))), df.index.values.astype("float64"), df_dns.index.values.astype("float64"), h=delta)*100 for df, vrms      in zip(df_les, vrms_les     )]
+    eps_wrms = [compute_eps(np.sqrt(np.abs(wrms     .values.astype("float64"))), np.sqrt(np.abs(wrms_dns     .values.astype("float64"))), df.index.values.astype("float64"), df_dns.index.values.astype("float64"), h=delta)*100 for df, wrms      in zip(df_les, wrms_les     )]
+    eps_uv   = [compute_eps(np.sqrt(np.abs(uv       .values.astype("float64"))), np.sqrt(np.abs(uv_dns       .values.astype("float64"))), df.index.values.astype("float64"), df_dns.index.values.astype("float64"), h=delta)*100 for df, uv        in zip(df_les, uv_les       )]
+    eps_ut   = [compute_eps(np.sqrt(np.abs(u_theta  .values.astype("float64"))), np.sqrt(np.abs(u_theta_dns  .values.astype("float64"))), df.index.values.astype("float64"), df_dns.index.values.astype("float64"), h=delta)*100 for df, u_theta   in zip(df_les, u_theta_les  )]
+    eps_vt   = [compute_eps(np.sqrt(np.abs(v_theta  .values.astype("float64"))), np.sqrt(np.abs(v_theta_dns  .values.astype("float64"))), df.index.values.astype("float64"), df_dns.index.values.astype("float64"), h=delta)*100 for df, v_theta   in zip(df_les, v_theta_les  )]
+    eps_trms = [compute_eps(np.sqrt(np.abs(theta_rms.values.astype("float64"))), np.sqrt(np.abs(theta_rms_dns.values.astype("float64"))), df.index.values.astype("float64"), df_dns.index.values.astype("float64"), h=delta)*100 for df, theta_rms in zip(df_les, theta_rms_les)]
+
+    eps_mean = {
+       "u": eps_u,
+       "v": eps_v,
+       "t": eps_t,
+       "phi": eps_phi
+    }
+    eps_rms = {
+        "urms":  eps_urms,
+        "vrms":  eps_vrms,
+        "wrms":  eps_wrms,
+        "uv":    eps_uv  ,
+        "ut":    eps_ut  ,
+        "vt":    eps_vt  ,
+        "trms":  eps_trms,
+    }
+    return eps_mean, eps_rms
+
+
+
+
+
 
 def assess_mean_error_across_quantities(
     quantities: List[str],
