@@ -83,13 +83,15 @@ def ref_values(path: str, Cp=1005, h=0.029846 / 2) -> Tuple[Dict]:
         y,
         yplus,
         ref,
+        mu_bulk,
     )
 
 
 class RefData(object):
-    def __init__(self, path: str, Cp=1005) -> None:
+    def __init__(self, path: str, Cp=1005, h=0.029846 / 2) -> None:
         self.path = path
         self.Cp = self.cp = Cp
+        self.h = h
 
     def load(self, path=None, Cp=None):
         if not path:
@@ -114,7 +116,8 @@ class RefData(object):
             self.y,
             self.yplus,
             self.df,
-        ) = ref_values(path, self.Cp)
+            self.mu_bulk,
+        ) = ref_values(path, self.Cp, h=self.h)
         self.ubulk = self.u_bulk
         self.rebulk = self.re_bulk
 
@@ -132,6 +135,7 @@ class RefData(object):
             "u_bulk": self.u_bulk,
             "t_bulk": self.t_bulk,
             "re_bulk": self.re_bulk,
+            "mu_bulk": self.mu_bulk,
         }
         self.middle = len(self.y) // 2
         self.Nusselt = self.Nu = self.nusselt
