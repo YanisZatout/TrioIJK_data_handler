@@ -351,11 +351,6 @@ def rms(df_les: List[pd.DataFrame], df_dns: pd.DataFrame, Cp=1155, tau_compressi
     les = {"urms": urms_les, "vrms": vrms_les, "wrms": wrms_les, "uv": uv_les, "u_theta": u_theta_les, "v_theta": v_theta_les, "theta_rms": theta_rms_les}
     dns = {"urms": urms_dns, "vrms": vrms_dns, "wrms": wrms_dns, "uv": uv_dns, "u_theta": u_theta_dns, "v_theta": v_theta_dns, "theta_rms": theta_rms_dns}
 
-    for key, value in les.items():
-        les[key] = np.sqrt(value)
-    for key, value in dns.items():
-        dns[key] = np.sqrt(value)
-
     return les, dns
 
 
@@ -454,27 +449,27 @@ def adim_second_order_stats(ref: RefData, les: Dict[str, list[pd.DataFrame]], dn
     dns_all_hot = dict()
     dns_all_cold = dict()
     for key in ["urms", "vrms", "wrms", "uv"]:
-        les_all_hot[key] = [t[middle:]/(ref.utau["hot"]**2) for t, middle in zip(les[key], middles)]
-        les_all_cold[key] = [t[:middle]/(ref.utau["cold"]**2) for t, middle in zip(les[key], middles)]
+        les_all_hot = [t.values[middle:][::-1]/(ref.utau["hot"]**2) for t, middle in zip(les[key], middles)]
+        les_all_cold[key] = [t.values[:middle]/(ref.utau["cold"]**2) for t, middle in zip(les[key], middles)]
 
     for key in ["u_theta", "v_theta"]:
-        les_all_hot[key] = [t[middle:]/(ref.utau["hot"] * ref.thetatau["hot"]) for t, middle in zip(les[key], middles)]
-        les_all_cold[key] = [t[:middle]/(ref.utau["cold"] * ref.thetatau["cold"]) for t, middle in zip(les[key], middles)]
+        les_all_hot = [t.values[middle:][::-1]/(ref.utau["hot"] * ref.thetatau["hot"]) for t, middle in zip(les[key], middles)]
+        les_all_cold[key] = [t.values[:middle]/(ref.utau["cold"] * ref.thetatau["cold"]) for t, middle in zip(les[key], middles)]
     
-    les_all_hot["theta_rms"] = [t[middle:]/(ref.thetatau["hot"]**2) for t, middle in zip(les[key], middles)]
-    les_all_cold["theta_rms"] = [t[:middle]/(ref.thetatau["cold"]**2) for t, middle in zip(les[key], middles)]
+    les_all_hot = [t.values[middle:]/(ref.thetatau["hot"]**2) for t, middle in zip(les[key], middles)]
+    les_all_cold["theta_rms"] = [t.values[:middle]/(ref.thetatau["cold"]**2) for t, middle in zip(les[key], middles)]
 
     middle_dns = dns["urms"].shape[0]//2
     for key in ["urms", "vrms", "wrms", "uv"]:
-        dns_all_hot[key]  = dns[key][middle_dns:]/(ref.utau["hot"]**2)
-        dns_all_cold[key] = dns[key][:middle_dns]/(ref.utau["cold"]**2)
+        dns_all_hot[key]  = dns[key].values[middle_dns:][::-1]/(ref.utau["hot"]**2)
+        dns_all_cold[key] = dns[key].values[:middle_dns]/(ref.utau["cold"]**2)
 
     for key in ["u_theta", "v_theta"]:
-        dns_all_hot[key]  = dns[key][middle_dns:]/(ref.utau["hot"] * ref.thetatau["hot"])
-        dns_all_cold[key] = dns[key][:middle_dns]/(ref.utau["cold"] * ref.thetatau["cold"])
+        dns_all_hot[key]  = dns[key].values[middle_dns:][::-1]/(ref.utau["hot"] * ref.thetatau["hot"])
+        dns_all_cold[key] = dns[key].values[:middle_dns]/(ref.utau["cold"] * ref.thetatau["cold"])
     
-    dns_all_hot["theta_rms"]  = dns[key][middle_dns:]/(ref.thetatau["hot"]**2)
-    dns_all_cold["theta_rms"] = dns[key][:middle_dns]/(ref.thetatau["cold"]**2)
+    dns_all_hot["theta_rms"]  = dns[key].values[middle_dns:][::-1]/(ref.thetatau["hot"]**2)
+    dns_all_cold["theta_rms"] = dns[key].values[:middle_dns]/(ref.thetatau["cold"]**2)
 
     les_all = {"hot":les_all_hot, "cold":les_all_cold}
     dns_all = {"hot":dns_all_hot, "cold":dns_all_cold}
