@@ -421,30 +421,66 @@ def closure_terms(df_les: List[pd.DataFrame], Cp=1155, tau_compressible=False, p
 
 
 def adim_closure_terms(ref: RefData, tau: Dict[str, list[pd.DataFrame]], pi: Dict[str, list[pd.DataFrame]])->Dict[str, list[pd.DataFrame]]:
-    middles = [df["urms"][0].shape[0] //2 for df in tau]
-    tau_hot = dict()
+    middles  = [df.shape[0] //2 for df in tau["urms"]]
+    tau_hot  = dict()
     tau_cold = dict()
+
+    pi_hot   = dict()
+    pi_cold  = dict()
     
     for key in ["urms_dev", "urms", "vrms_dev", "vrms", "wrms_dev", "wrms", "uv"]:
         tau_hot[key] = [t.iloc[middle:]/(ref.utau["hot"]**2) for t, middle in zip(tau[key], middles)]
-        tau_cold[key] = [t.iloc[:middle]/(ref.utau["hot"]**2) for t, middle in zip(tau[key], middles)]
+        tau_cold[key] = [t.iloc[:middle]/(ref.utau["cold"]**2) for t, middle in zip(tau[key], middles)]
 
         pi_hot[key] = [t.iloc[middle:]/(ref.utau["hot"]**2) for t, middle in zip(pi[key], middles)]
-        pi_cold[key] = [t.iloc[:middle]/(ref.utau["hot"]**2) for t, middle in zip(pi[key], middles)]
+        pi_cold[key] = [t.iloc[:middle]/(ref.utau["cold"]**2) for t, middle in zip(pi[key], middles)]
 
     for key in ["u_theta", "v_theta"]:
-        tau_hot[key] = [t.iloc[middle:]/(ref.utau["hot"] * ref.sheer["thetatau"]) for t, middle in zip(tau[key], middles)]
-        tau_cold[key] = [t.iloc[:middle]/(ref.utau["hot"] * ref.sheer["thetatau"]) for t, middle in zip(tau[key], middles)]
+        tau_hot[key] = [t.iloc[middle:]/(ref.utau["hot"] * ref.sheer["thetatau"]["hot"]) for t, middle in zip(tau[key], middles)]
+        tau_cold[key] = [t.iloc[:middle]/(ref.utau["cold"] * ref.sheer["thetatau"]["cold"]) for t, middle in zip(tau[key], middles)]
 
-        pi_hot[key] = [t.iloc[middle:]/(ref.utau["hot"] * ref.sheer["thetatau"]) for t, middle in zip(pi[key], middles)]
-        pi_cold[key] = [t.iloc[:middle]/(ref.utau["hot"] * ref.sheer["thetatau"]) for t, middle in zip(pi[key], middles)]
+        pi_hot[key] = [t.iloc[middle:]/(ref.utau["hot"] * ref.sheer["thetatau"]["hot"]) for t, middle in zip(pi[key], middles)]
+        pi_cold[key] = [t.iloc[:middle]/(ref.utau["cold"] * ref.sheer["thetatau"]["cold"]) for t, middle in zip(pi[key], middles)]
 
     tau_all = {"hot": tau_hot, "cold": tau_cold}
     pi_all  = {"hot": pi_hot, "cold": pi_cold}
     return tau_all, pi_all
 
 def adim_second_order_stats(ref: RefData, les: Dict[str, list[pd.DataFrame]], dns: Dict[str, list[pd.DataFrame]]) -> Dict[str, list[pd.DataFrame]]:
-    pass
+    middles = [df.shape[0] //2 for df in les["urms"]]
+    les_all_hot = dict()
+    les_all_cold = dict()
+
+    dns_all_hot = dict()
+    dns_all_cold = dict()
+    for key in ["urms", "vrms", "wrms", "uv"]:
+        les_all_hot[key] = [t[middle:]/(ref.utau["hot"]**2) for t, middle in zip(les[key], middles)]
+        les_all_cold[key] = [t[:middle]/(ref.utau["cold"]**2) for t, middle in zip(les[key], middles)]
+
+    for key in ["u_theta", "v_theta"]:
+        les_all_hot[key] = [t[middle:]/(ref.utau["hot"] * ref.thetatau["hot"]) for t, middle in zip(les[key], middles)]
+        les_all_cold[key] = [t[:middle]/(ref.utau["cold"] * ref.thetatau["cold"]) for t, middle in zip(les[key], middles)]
+    
+    les_all_hot["theta_rms"] = [t[middle:]/(ref.thetatau["hot"]**2) for t, middle in zip(les[key], middles)]
+    les_all_cold["theta_rms"] = [t[:middle]/(ref.thetatau["cold"]**2) for t, middle in zip(les[key], middles)]
+
+    middle_dns = dns["urms"].shape[0]//2
+    for key in ["urms", "vrms", "wrms", "uv"]:
+        dns_all_hot[key]  = dns[key][middle_dns:]/(ref.utau["hot"]**2)
+        dns_all_cold[key] = dns[key][:middle_dns]/(ref.utau["cold"]**2)
+
+    for key in ["u_theta", "v_theta"]:
+        dns_all_hot[key]  = dns[key][middle_dns:]/(ref.utau["hot"] * ref.thetatau["hot"])
+        dns_all_cold[key] = dns[key][:middle_dns]/(ref.utau["cold"] * ref.thetatau["cold"])
+    
+    dns_all_hot["theta_rms"]  = dns[key][middle_dns:]/(ref.thetatau["hot"]**2)
+    dns_all_cold["theta_rms"] = dns[key][:middle_dns]/(ref.thetatau["cold"]**2)
+
+    les_all = {"hot":les_all_hot, "cold":les_all_cold}
+    dns_all = {"hot":dns_all_hot, "cold":dns_all_cold}
+
+    return les_all, dns_all
+
 
 
 def mean_over_n_times(df: pd.DataFrame, n: int = 0):
