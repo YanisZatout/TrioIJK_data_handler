@@ -449,11 +449,11 @@ def adim_second_order_stats(ref: RefData, les: Dict[str, list[pd.DataFrame]], dn
     dns_all_hot = dict()
     dns_all_cold = dict()
     for key in ["urms", "vrms", "wrms", "uv"]:
-        les_all_hot = [t.values[middle:][::-1]/(ref.utau["hot"]**2) for t, middle in zip(les[key], middles)]
+        les_all_hot[key] = [t.values[middle:][::-1]/(ref.utau["hot"]**2) for t, middle in zip(les[key], middles)]
         les_all_cold[key] = [t.values[:middle]/(ref.utau["cold"]**2) for t, middle in zip(les[key], middles)]
 
     for key in ["u_theta", "v_theta"]:
-        les_all_hot = [t.values[middle:][::-1]/(ref.utau["hot"] * ref.thetatau["hot"]) for t, middle in zip(les[key], middles)]
+        les_all_hot[key] = [t.values[middle:][::-1]/(ref.utau["hot"] * ref.thetatau["hot"]) for t, middle in zip(les[key], middles)]
         les_all_cold[key] = [t.values[:middle]/(ref.utau["cold"] * ref.thetatau["cold"]) for t, middle in zip(les[key], middles)]
     
     les_all_hot = [t.values[middle:]/(ref.thetatau["hot"]**2) for t, middle in zip(les[key], middles)]
