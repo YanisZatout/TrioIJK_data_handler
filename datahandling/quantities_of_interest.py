@@ -424,18 +424,18 @@ def adim_closure_terms(ref: RefData, tau: Dict[str, list[pd.DataFrame]], pi: Dic
     pi_cold  = dict()
     
     for key in ["urms_dev", "urms", "vrms_dev", "vrms", "wrms_dev", "wrms", "uv"]:
-        tau_hot[key] = [t.iloc[middle:]/(ref.utau["hot"]**2) for t, middle in zip(tau[key], middles)]
-        tau_cold[key] = [t.iloc[:middle]/(ref.utau["cold"]**2) for t, middle in zip(tau[key], middles)]
+        tau_hot[key] = [t.values[middle:][::-1]/(ref.utau["hot"]**2) for t, middle in zip(tau[key], middles)]
+        tau_cold[key] = [t.values[:middle]/(ref.utau["cold"]**2) for t, middle in zip(tau[key], middles)]
 
-        pi_hot[key] = [t.iloc[middle:]/(ref.utau["hot"]**2) for t, middle in zip(pi[key], middles)]
-        pi_cold[key] = [t.iloc[:middle]/(ref.utau["cold"]**2) for t, middle in zip(pi[key], middles)]
+        pi_hot[key] = [t.values[middle:][::-1]/(ref.utau["hot"]**2) for t, middle in zip(pi[key], middles)]
+        pi_cold[key] = [t.values[:middle]/(ref.utau["cold"]**2) for t, middle in zip(pi[key], middles)]
 
     for key in ["u_theta", "v_theta"]:
-        tau_hot[key] = [t.iloc[middle:]/(ref.utau["hot"] * ref.sheer["thetatau"]["hot"]) for t, middle in zip(tau[key], middles)]
-        tau_cold[key] = [t.iloc[:middle]/(ref.utau["cold"] * ref.sheer["thetatau"]["cold"]) for t, middle in zip(tau[key], middles)]
+        tau_hot[key] = [t.values[middle:][::-1]/(ref.utau["hot"] * ref.sheer["thetatau"]["hot"]) for t, middle in zip(tau[key], middles)]
+        tau_cold[key] = [t.values[:middle]/(ref.utau["cold"] * ref.sheer["thetatau"]["cold"]) for t, middle in zip(tau[key], middles)]
 
-        pi_hot[key] = [t.iloc[middle:]/(ref.utau["hot"] * ref.sheer["thetatau"]["hot"]) for t, middle in zip(pi[key], middles)]
-        pi_cold[key] = [t.iloc[:middle]/(ref.utau["cold"] * ref.sheer["thetatau"]["cold"]) for t, middle in zip(pi[key], middles)]
+        pi_hot[key] = [t.values[middle:][::-1]/(ref.utau["hot"] * ref.sheer["thetatau"]["hot"]) for t, middle in zip(pi[key], middles)]
+        pi_cold[key] = [t.values[:middle]/(ref.utau["cold"] * ref.sheer["thetatau"]["cold"]) for t, middle in zip(pi[key], middles)]
 
     tau_all = {"hot": tau_hot, "cold": tau_cold}
     pi_all  = {"hot": pi_hot, "cold": pi_cold}
