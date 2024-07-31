@@ -5,6 +5,7 @@ import pandas as pd
 
 Ref = Type["RefData"]
 
+
 def ref_values(path: str, Cp=1005, h=0.029846 / 2) -> Tuple[Dict]:
     hot = -1
     cold = 0
@@ -60,8 +61,8 @@ def ref_values(path: str, Cp=1005, h=0.029846 / 2) -> Tuple[Dict]:
     middle = len(y) // 2
 
     msh = y = ref.index.values
-    y_plus_hot = y[:middle] * utau["hot"] / ref["NU"].iloc[hot]
-    y_plus_cold = (2 * h - y[middle:][::-1]) * utau["cold"] / ref["NU"].iloc[cold]
+    y_plus_hot = (2 * h - y[middle:])[::-1] * utau["hot"] / ref["NU"].iloc[hot]
+    y_plus_cold = y[:middle] * utau["cold"] / ref["NU"].iloc[cold]
 
     y_plus = yplus = {"hot": y_plus_hot, "cold": y_plus_cold}
 
