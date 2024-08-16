@@ -21,3 +21,24 @@ def format_model(models: List[str]) -> Tuple[List[str], List[str], List[str]]:
     discretisation_qdm = [m.split("_")[1] for m in models]
     discretisation_mass = [m.split("_")[2] for m in models]
     return model_names, discretisation_qdm, discretisation_mass
+
+
+def key_equivalent(entry: str, sqrt: bool = False)->str:
+    out = None
+    if "rms" in entry:
+        out = r"\langle " f"{entry[0].upper()}'^2" r"\rangle^{+,dev}"
+    if "uv" in entry:
+        out = r"\langle " f"{entry[0].upper()}'{entry[1].upper()}'" r"\rangle^+"
+    if "theta" in entry:
+        out = r"\langle " f"{entry[0].upper()}'" r"\theta'" r"\rangle^+"
+    if "theta_rms" in entry:
+        out = r"\langle " r"\theta'^2" r"\rangle^+"
+    if "U" in entry or "V" in entry or "T" in entry:
+        out = r"\langle " f"{entry[0].upper()}" r"\rangle^+"
+    if "phi" in entry.lower() or "lambdadtdz" in entry.lower():
+        out = r"\langle " r"\phi" r"\rangle"
+    if "cf" in entry.lower():
+        return r"Cf"
+    if sqrt:
+        out = r"\sqrt{" f"{out}" r"}"
+    return "$" + str(out) + "$"

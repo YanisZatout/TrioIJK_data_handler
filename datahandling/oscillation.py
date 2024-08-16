@@ -66,6 +66,11 @@ def ref_values(path: str, Cp=1005, h=0.029846 / 2) -> Tuple[Dict]:
 
     y_plus = yplus = {"hot": y_plus_hot, "cold": y_plus_cold}
 
+    phi_tau = {
+        "hot": (ref["LAMBDADTDZ"]/(ref["RHO"]*Cp*utau["hot"])).values[hot], 
+        "cold": (ref["LAMBDADTDZ"]/(ref["RHO"]*Cp*utau["cold"])).values[cold]
+    }
+
     return (
         h,
         Tw,
@@ -85,6 +90,7 @@ def ref_values(path: str, Cp=1005, h=0.029846 / 2) -> Tuple[Dict]:
         yplus,
         ref,
         mu_bulk,
+        phi_tau
     )
 
 
@@ -118,6 +124,7 @@ class RefData(object):
             self.yplus,
             self.df,
             self.mu_bulk,
+            self.phi_tau,
         ) = ref_values(path, self.Cp, h=self.h)
         self.ubulk = self.u_bulk
         self.rebulk = self.re_bulk
@@ -128,6 +135,7 @@ class RefData(object):
             "retau": self.retau,
             "Cf": self.Cf,
             "thetatau": self.thetatau,
+            "phitau": self.phi_tau,
         }
         self.msh = {"y": self.y, "h": self.h}
         self.T = self.thermal = {"Nu": self.nusselt, "nusselt": self.nusselt}
@@ -141,6 +149,11 @@ class RefData(object):
         self.middle = len(self.y) // 2
         self.Nusselt = self.Nu = self.nusselt
         self.ny = self.y.shape[0]
+    def __repr__(self):
+        return f"bulk quantities {self.bulk}\n"\
+            f"sheer quantities {self.sheer}\n"\
+            f"wall quantities {self.wall}\n"
+
 
 
 def osc_post_treat(

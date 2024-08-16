@@ -456,7 +456,7 @@ def adim_second_order_stats(ref: RefData, les: Dict[str, list[pd.DataFrame]], dn
         les_all_hot[key] = [t.values[middle:][::-1]/(ref.utau["hot"] * ref.thetatau["hot"]) for t, middle in zip(les[key], middles)]
         les_all_cold[key] = [t.values[:middle]/(ref.utau["cold"] * ref.thetatau["cold"]) for t, middle in zip(les[key], middles)]
     
-    les_all_hot["theta_rms"] = [t.values[middle:]/(ref.thetatau["hot"]**2) for t, middle in zip(les[key], middles)]
+    les_all_hot["theta_rms"] = [t.values[middle:][::-1]/(ref.thetatau["hot"]**2) for t, middle in zip(les[key], middles)]
     les_all_cold["theta_rms"] = [t.values[:middle]/(ref.thetatau["cold"]**2) for t, middle in zip(les[key], middles)]
 
     middle_dns = dns["urms"].shape[0]//2
@@ -510,3 +510,113 @@ def u_tau(df: pd.DataFrame, y: np.typing.ArrayLike):
 def re_tau(df: pd.DataFrame, y: np.array, h: float):
     utau = u_tau(df, y)
     return utau[0] * h / df["NU"].iloc[0], utau[-1] * h / df["NU"].iloc[-1]
+
+
+
+def rms_les(x: List[pd.DataFrame])->Dict[str, List[pd.DataFrame]]:
+    """
+    Computes the RMS of the LES without adim, just plain RMS for
+    urms, vrms, wrms, uv, u_theta, v_theta, theta_rms
+    """
+    out = dict()
+    out["urms"]      = [xx["UU"] - xx["U"]*xx["U"] - 1/3*(xx["UU"] - xx["U"]**2 + xx["VV"] - xx["V"]**2 + xx["WW"] - xx["W"]**2) + xx["STRUCTURAL_UU"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"]) - 2 * (xx["NUTURB_XX_DUDX"] - 1/3 * (xx["NUTURB_XX_DUDX"] + xx["NUTURB_YY_DVDY"] + xx["NUTURB_ZZ_DWDZ"])) for xx in x]
+    out["vrms"]      = [xx["WW"] - xx["W"]*xx["W"] - 1/3*(xx["UU"] - xx["U"]**2 + xx["VV"] - xx["V"]**2 + xx["WW"] - xx["W"]**2) + xx["STRUCTURAL_WW"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"]) - 2 * (xx["NUTURB_ZZ_DWDZ"] - 1/3 * (xx["NUTURB_XX_DUDX"] + xx["NUTURB_YY_DVDY"] + xx["NUTURB_ZZ_DWDZ"])) for xx in x]
+    out["wrms"]      = [xx["VV"] - xx["V"]*xx["V"] - 1/3*(xx["UU"] - xx["U"]**2 + xx["VV"] - xx["V"]**2 + xx["WW"] - xx["W"]**2) + xx["STRUCTURAL_WW"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"]) - 2 * (xx["NUTURB_YY_DVDY"] - 1/3 * (xx["NUTURB_XX_DUDX"] + xx["NUTURB_YY_DVDY"] + xx["NUTURB_ZZ_DWDZ"])) for xx in x]
+    out["uv"]        = [xx["UW"] - xx["U"]*xx["W"] + xx["STRUCTURAL_UW"] - (xx["NUTURB_XZ_DUDZ"] + xx["NUTURB_XZ_DWDX"]) for xx in x]
+    out["u_theta"]   = [xx["UT"] - xx["U"]*xx["T"] + xx["STRUCTURAL_USCALAR"] - 2 * xx["KAPPATURB_X_DSCALARDX"] for xx in x]
+    out["v_theta"]   = [xx["WT"] - xx["W"]*xx["T"] + xx["STRUCTURAL_WSCALAR"] - 2 * xx["KAPPATURB_Z_DSCALARDZ"] for xx in x]
+    out["theta_rms"] = [xx["T2"] - xx["T"]*xx["T"] for xx in x]
+    
+    return out
+
+def mean_les(x: List[pd.DataFrame], ref) -> Dict[str, List[pd.DataFrame]]:
+    out = dict()
+    out["U"]   = [xx["U"] for xx in x] 
+    out["V"]   = [xx["W"] for xx in x] 
+    out["T"]   = {"hot": [(xx["T"]-ref.Tw["hot"])/(ref.t_bulk - ref.Tw["hot"]) for xx in x],
+                  "cold": [(xx["T"]-ref.Tw["cold"])/(ref.t_bulk - ref.Tw["cold"]) for xx in x]}
+    out["PHI"] = out["PHI"] = [xx["LAMBDADTDZ"] for xx in x]
+    out["Cf"]  = [xx["MU"] * np.gradient(xx["U"], xx["coordonnee_K"], edge_order=2) for xx in x]
+    return out
+
+
+def rms_dns(xx):
+    """
+    Computes the RMS of the DNS without adim, just plain RMS for
+    urms, vrms, wrms, uv, u_theta, v_theta, theta_rms
+    """
+    out = dict()
+    out["urms"]      = xx["UU"] - xx["U"]*xx["U"] - 1/3*(xx["UU"] - xx["U"]**2 + xx["VV"] - xx["V"]**2 + xx["WW"] - xx["W"]**2)
+    out["vrms"]      = xx["WW"] - xx["W"]*xx["W"] - 1/3*(xx["UU"] - xx["U"]**2 + xx["VV"] - xx["V"]**2 + xx["WW"] - xx["W"]**2)
+    out["wrms"]      = xx["VV"] - xx["V"]*xx["V"] - 1/3*(xx["UU"] - xx["U"]**2 + xx["VV"] - xx["V"]**2 + xx["WW"] - xx["W"]**2)
+    out["uv"]        = xx["UW"] - xx["U"]*xx["W"]
+    out["u_theta"]   = xx["UT"] - xx["U"]*xx["T"]
+    out["v_theta"]   = xx["WT"] - xx["W"]*xx["T"]
+    out["theta_rms"] = xx["T2"] - xx["T"]*xx["T"]
+    
+    return out
+
+
+def mean_dns(x: pd.DataFrame, ref) -> Dict[str, pd.DataFrame]:
+    xx = x
+    out = dict()
+    out["U"]   = x["U"]
+    out["V"]   = x["W"]
+    out["T"]   = {"hot": (xx["T"]-ref.Tw["hot"])/(ref.t_bulk - ref.Tw["hot"]),
+                  "cold": (xx["T"]-ref.Tw["cold"])/(ref.t_bulk - ref.Tw["cold"])}
+    out["PHI"] = out["LAMBDADTDZ"] = x["LAMBDADTDZ"]
+    out["Cf"]  = x["MU"] * np.gradient(x["U"], x["coordonnee_K"], edge_order=2)
+    return out
+
+def closure(xx, compressible_tau=False, compressible_pi=False):
+    """
+    Gets the closure, with knowledge of the compressibility
+    of a model
+    """
+    fonc              = dict()
+    struct            = dict()
+    
+    struct["urms"]        = (xx["STRUCTURAL_UU"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"])) 
+    struct["vrms"]        = (xx["STRUCTURAL_WW"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"])) 
+    struct["wrms"]        = (xx["STRUCTURAL_WW"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"])) 
+    struct["uv"]          = (xx["STRUCTURAL_UW"]) 
+    struct["u_theta"]     = (xx["STRUCTURAL_USCALAR"]) 
+    struct["v_theta"]     = (xx["STRUCTURAL_WSCALAR"]) 
+    if compressible_tau:
+        struct["urms"]    = (xx["STRUCTURAL_UU"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"]))/xx["RHO"] 
+        struct["vrms"]    = (xx["STRUCTURAL_WW"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"]))/xx["RHO"] 
+        struct["wrms"]    = (xx["STRUCTURAL_WW"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"]))/xx["RHO"] 
+        struct["uv"]      = (xx["STRUCTURAL_UW"])/xx["RHO"]
+    if compressible_pi:
+        struct["u_theta"] = (xx["STRUCTURAL_USCALAR"])/xx["RHO"]
+        struct["v_theta"] = (xx["STRUCTURAL_WSCALAR"])/xx["RHO"]
+    
+    fonc["urms"]      = - 2 * (xx["NUTURB_XX_DUDX"] - 1/3 * (xx["NUTURB_XX_DUDX"] + xx["NUTURB_YY_DVDY"] + xx["NUTURB_ZZ_DWDZ"]))
+    fonc["vrms"]      = - 2 * (xx["NUTURB_ZZ_DWDZ"] - 1/3 * (xx["NUTURB_XX_DUDX"] + xx["NUTURB_YY_DVDY"] + xx["NUTURB_ZZ_DWDZ"]))
+    fonc["wrms"]      = - 2 * (xx["NUTURB_YY_DVDY"] - 1/3 * (xx["NUTURB_XX_DUDX"] + xx["NUTURB_YY_DVDY"] + xx["NUTURB_ZZ_DWDZ"]))
+    fonc["uv"]        = - (xx["NUTURB_XZ_DUDZ"] + xx["NUTURB_XZ_DWDX"])
+    fonc["u_theta"]   = - 2 * xx["KAPPATURB_X_DSCALARDX"]
+    fonc["v_theta"]   = - 2 * xx["KAPPATURB_Z_DSCALARDZ"]
+    return fonc, struct
+
+def normalize_quantity(qtty, ref):
+    """
+    Get the normalizing quantities in the form of a dictionary
+    """
+    if "urms" in qtty or "vrms" in qtty or "wrms" in qtty or "uv" in qtty:
+        return {"hot": ref.utau["hot"]**2, "cold": ref.utau["cold"]**2}
+    if "u_theta" in qtty.lower() or "v_theta" in qtty.lower():
+        return {"hot": ref.utau["hot"] * ref.thetatau["hot"], "cold": ref.utau["cold"] * ref.thetatau["cold"]}
+    if "theta_rms" in qtty.lower():
+        return {"hot": ref.thetatau["hot"]**2, "cold": ref.thetatau["cold"]**2}
+    if "u".lower() in qtty.lower() or "v".lower() in qtty.lower() or "w".lower() in qtty.lower():
+        return {"hot": ref.utau["hot"], "cold": ref.utau["cold"]}
+    if "phi" in qtty.lower() or "lambdadtdz" in qtty.lower():
+        return {"hot": ref.phi_tau["hot"], "cold": ref.phi_tau["cold"]}
+    if "cf".lower() in qtty.lower():
+        return {
+            "hot": ref.rho_bulk * (ref.u_bulk ** 2)/2,
+            "cold":ref.rho_bulk * (ref.u_bulk ** 2)/2
+        }
+    if "T".lower() in qtty.lower():
+        return {"hot":ref.t_bulk-ref.Tw["hot"], "cold": ref.t_bulk-ref.Tw["cold"]}
