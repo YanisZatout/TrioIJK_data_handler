@@ -529,16 +529,19 @@ def rms_les(x: List[pd.DataFrame])->Dict[str, List[pd.DataFrame]]:
     
     return out
 
-def mean_les(x: List[pd.DataFrame], ref) -> Dict[str, List[pd.DataFrame]]:
+def mean_les(x, ref, mesh) -> Dict[str, List[pd.DataFrame]]:
     out = dict()
+    half = len(mesh["hot"])
     out["U"]   = [xx["U"] for xx in x] 
     out["V"]   = [xx["W"] for xx in x] 
-    out["T"]   = {"hot": [(xx["T"]-ref.Tw["hot"])/(ref.t_bulk - ref.Tw["hot"]) for xx in x],
-                  "cold": [(xx["T"]-ref.Tw["cold"])/(ref.t_bulk - ref.Tw["cold"]) for xx in x]}
-    out["PHI"] = out["PHI"] = [xx["LAMBDADTDZ"] for xx in x]
+    out["T"]   = {"hot" : [(xx["T"]-ref.Tw["hot" ]).values[half:] for xx in x],
+                  "cold": [(xx["T"]-ref.Tw["cold"]).values[:half] for xx in x]}
+    out["NU"] = {
+        "hot": [np.gradient(xx[::-1], mesh["hot" ], edge_order=2) for xx in out["T"]["hot" ]],
+        "cold":[np.gradient(xx,       mesh["cold"], edge_order=2) for xx in out["T"]["cold"]]
+    }
     out["Cf"]  = [xx["MU"] * np.gradient(xx["U"], xx["coordonnee_K"], edge_order=2) for xx in x]
     return out
-
 
 def rms_dns(xx):
     """
@@ -560,11 +563,15 @@ def rms_dns(xx):
 def mean_dns(x: pd.DataFrame, ref) -> Dict[str, pd.DataFrame]:
     xx = x
     out = dict()
+    half = len(ref.df.U)//2
     out["U"]   = x["U"]
     out["V"]   = x["W"]
-    out["T"]   = {"hot": (xx["T"]-ref.Tw["hot"])/(ref.t_bulk - ref.Tw["hot"]),
-                  "cold": (xx["T"]-ref.Tw["cold"])/(ref.t_bulk - ref.Tw["cold"])}
-    out["PHI"] = out["LAMBDADTDZ"] = x["LAMBDADTDZ"]
+    out["T"]   = {"hot" : (xx["T"]-ref.Tw["hot" ]).values[::-1][:half],
+                  "cold": (xx["T"]-ref.Tw["cold"]).values[:half]}
+    out["NU"] = {
+        "hot" : np.gradient(out["T"]["hot" ][:half], ref.yplus["hot" ], edge_order=2),
+        "cold": np.gradient(out["T"]["cold"][:half]      , ref.yplus["cold"], edge_order=2)
+    }
     out["Cf"]  = x["MU"] * np.gradient(x["U"], x["coordonnee_K"], edge_order=2)
     return out
 
@@ -611,12 +618,12 @@ def normalize_quantity(qtty, ref):
         return {"hot": ref.thetatau["hot"]**2, "cold": ref.thetatau["cold"]**2}
     if "u".lower() in qtty.lower() or "v".lower() in qtty.lower() or "w".lower() in qtty.lower():
         return {"hot": ref.utau["hot"], "cold": ref.utau["cold"]}
-    if "phi" in qtty.lower() or "lambdadtdz" in qtty.lower():
-        return {"hot": ref.phi_tau["hot"], "cold": ref.phi_tau["cold"]}
+    if "nu" in qtty.lower() or "lambdadtdz" in qtty.lower():
+        return {"hot": 1, "cold": 1}
     if "cf".lower() in qtty.lower():
         return {
             "hot": ref.rho_bulk * (ref.u_bulk ** 2)/2,
             "cold":ref.rho_bulk * (ref.u_bulk ** 2)/2
         }
     if "T".lower() in qtty.lower():
-        return {"hot":ref.t_bulk-ref.Tw["hot"], "cold": ref.t_bulk-ref.Tw["cold"]}
+        return {"hot": ref.thetatau["hot"], "cold": ref.thetatau["cold"]}

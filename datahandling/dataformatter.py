@@ -35,8 +35,8 @@ def key_equivalent(entry: str, sqrt: bool = False)->str:
         out = r"\langle " r"\theta'^2" r"\rangle^+"
     if "U" in entry or "V" in entry or "T" in entry:
         out = r"\langle " f"{entry[0].upper()}" r"\rangle^+"
-    if "phi" in entry.lower() or "lambdadtdz" in entry.lower():
-        out = r"\langle " r"\phi" r"\rangle"
+    if "nu" in entry.lower() or "lambdadtdz" in entry.lower():
+        out = r"Nu"
     if "cf" in entry.lower():
         return r"Cf"
     if sqrt:
