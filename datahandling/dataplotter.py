@@ -346,14 +346,16 @@ def make_legend_mean(
         ax[idx_quantity][-1].legend(handles=dummy_lines, loc='center left', bbox_to_anchor=(1, 0.5))
 
 
-def make_legend(
+def make_legend_rms(
     ax: Union[plt.axes, np.typing.ArrayLike],
     elements: list[dict]= {
         "linestyle": {"DNS":'-', "LES":'--', "struct":'none', "fonc":'none'}, 
         "marker": {"DNS":'', "LES":'', "struct":'.', "fonc":'*'}, 
         "colors": {"hot":"lightcoral", "cold":"lightblue"}
     },
-    quantities: list = None
+    quantities: list = None,
+    is_fonc=True,
+    is_struct=True
 ) -> None:
     linestyle_les = elements["linestyle"]["LES"]
     linestyle_dns = elements["linestyle"]["DNS"]
@@ -375,10 +377,14 @@ def make_legend(
                 plt.Line2D([0], [0], color='black', marker=marker_dns, linestyle=linestyle_dns, label="LES")
         ]
         if not "theta_rms" in quantity:
-            dummy_lines = [*dummy_lines,
-                plt.Line2D([0], [0], color='black', marker=marker_struct, linestyle=linestyle_struct, label="struct"),
-                plt.Line2D([0], [0], color='black', marker=marker_fonc, linestyle=linestyle_fonc,   label="fonct")
-            ]
+            if is_struct:
+                dummy_lines = [*dummy_lines,
+                    plt.Line2D([0], [0], color='black', marker=marker_struct, linestyle=linestyle_struct, label="struct"),
+                ]
+            if is_fonc:
+                dummy_lines=[*dummy_lines,
+                    plt.Line2D([0], [0], color='black', marker=marker_fonc, linestyle=linestyle_fonc,   label="fonct")
+                ]
         dummy_lines = [*dummy_lines,
             plt.Line2D([0], [0], color=color_cold, linestyle='-', label="cold"),
             plt.Line2D([0], [0], color=color_hot, linestyle='-', label="hot")
