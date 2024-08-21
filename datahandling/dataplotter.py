@@ -336,8 +336,8 @@ def make_legend_mean(
     
     for idx_quantity, quantity in enumerate(quantities):
         dummy_lines = [
-                plt.Line2D([0], [0], color='black', marker=marker_les, linestyle=linestyle_les, label="DNS"),
-                plt.Line2D([0], [0], color='black', marker=marker_dns, linestyle=linestyle_dns, label="LES")
+                plt.Line2D([0], [0], color='black', marker=marker_les, linestyle=linestyle_les, label="LES"),
+                plt.Line2D([0], [0], color='black', marker=marker_dns, linestyle=linestyle_dns, label="DNS")
         ]
         dummy_lines = [*dummy_lines,
             plt.Line2D([0], [0], color=color_cold, linestyle='-', label="cold"),
@@ -373,8 +373,8 @@ def make_legend_rms(
     
     for idx_quantity, quantity in enumerate(quantities):
         dummy_lines = [
-                plt.Line2D([0], [0], color='black', marker=marker_les, linestyle=linestyle_les, label="DNS"),
-                plt.Line2D([0], [0], color='black', marker=marker_dns, linestyle=linestyle_dns, label="LES")
+                plt.Line2D([0], [0], color='black', marker=marker_les, linestyle=linestyle_les, label="LES"),
+                plt.Line2D([0], [0], color='black', marker=marker_dns, linestyle=linestyle_dns, label="DNS")
         ]
         if not "theta_rms" in quantity:
             if is_struct:
