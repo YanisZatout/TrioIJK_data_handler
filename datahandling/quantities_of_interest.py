@@ -513,18 +513,27 @@ def re_tau(df: pd.DataFrame, y: np.array, h: float):
 
 
 
-def rms_les(x: List[pd.DataFrame])->Dict[str, List[pd.DataFrame]]:
+def rms_les(x: List[pd.DataFrame], Cp: Union[float, None]=None)->Dict[str, List[pd.DataFrame]]:
     """
     Computes the RMS of the LES without adim, just plain RMS for
     urms, vrms, wrms, uv, u_theta, v_theta, theta_rms
     """
+    if Cp is None:
+        from warnings import warn
+        warn("Implicitly using the function rms_les without setting Cp can be dangerous")
+        Cp = 1155
     out = dict()
-    out["urms"]      = [xx["UU"] - xx["U"]*xx["U"] - 1/3*(xx["UU"] - xx["U"]**2 + xx["VV"] - xx["V"]**2 + xx["WW"] - xx["W"]**2) + xx["STRUCTURAL_UU"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"]) - 2 * (xx["NUTURB_XX_DUDX"] - 1/3 * (xx["NUTURB_XX_DUDX"] + xx["NUTURB_YY_DVDY"] + xx["NUTURB_ZZ_DWDZ"])) for xx in x]
-    out["vrms"]      = [xx["WW"] - xx["W"]*xx["W"] - 1/3*(xx["UU"] - xx["U"]**2 + xx["VV"] - xx["V"]**2 + xx["WW"] - xx["W"]**2) + xx["STRUCTURAL_WW"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"]) - 2 * (xx["NUTURB_ZZ_DWDZ"] - 1/3 * (xx["NUTURB_XX_DUDX"] + xx["NUTURB_YY_DVDY"] + xx["NUTURB_ZZ_DWDZ"])) for xx in x]
-    out["wrms"]      = [xx["VV"] - xx["V"]*xx["V"] - 1/3*(xx["UU"] - xx["U"]**2 + xx["VV"] - xx["V"]**2 + xx["WW"] - xx["W"]**2) + xx["STRUCTURAL_WW"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"]) - 2 * (xx["NUTURB_YY_DVDY"] - 1/3 * (xx["NUTURB_XX_DUDX"] + xx["NUTURB_YY_DVDY"] + xx["NUTURB_ZZ_DWDZ"])) for xx in x]
-    out["uv"]        = [xx["UW"] - xx["U"]*xx["W"] + xx["STRUCTURAL_UW"] - (xx["NUTURB_XZ_DUDZ"] + xx["NUTURB_XZ_DWDX"]) for xx in x]
-    out["u_theta"]   = [xx["UT"] - xx["U"]*xx["T"] + xx["STRUCTURAL_USCALAR"] - 2 * xx["KAPPATURB_X_DSCALARDX"] for xx in x]
-    out["v_theta"]   = [xx["WT"] - xx["W"]*xx["T"] + xx["STRUCTURAL_WSCALAR"] - 2 * xx["KAPPATURB_Z_DSCALARDZ"] for xx in x]
+    out["urms"]      = [xx["UU"] - xx["U"]*xx["U"] - 1/3*(xx["UU"] - xx["U"]**2 + xx["VV"] - xx["V"]**2 + xx["WW"] - xx["W"]**2) + (xx["STRUCTURAL_UU"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"])) / xx["RHO"] - 2 * (xx["NUTURB_XX_DUDX"] - 1/3 * (xx["NUTURB_XX_DUDX"] + xx["NUTURB_YY_DVDY"] + xx["NUTURB_ZZ_DWDZ"])) / (xx["RHO"]) for xx in x]
+    out["vrms"]      = [xx["WW"] - xx["W"]*xx["W"] - 1/3*(xx["UU"] - xx["U"]**2 + xx["VV"] - xx["V"]**2 + xx["WW"] - xx["W"]**2) + (xx["STRUCTURAL_WW"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"])) / xx["RHO"] - 2 * (xx["NUTURB_ZZ_DWDZ"] - 1/3 * (xx["NUTURB_XX_DUDX"] + xx["NUTURB_YY_DVDY"] + xx["NUTURB_ZZ_DWDZ"])) / (xx["RHO"]) for xx in x]
+    out["wrms"]      = [xx["VV"] - xx["V"]*xx["V"] - 1/3*(xx["UU"] - xx["U"]**2 + xx["VV"] - xx["V"]**2 + xx["WW"] - xx["W"]**2) + (xx["STRUCTURAL_WW"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"])) / xx["RHO"] - 2 * (xx["NUTURB_YY_DVDY"] - 1/3 * (xx["NUTURB_XX_DUDX"] + xx["NUTURB_YY_DVDY"] + xx["NUTURB_ZZ_DWDZ"])) / (xx["RHO"]) for xx in x]
+    out["uv"]        = [xx["UW"] - xx["U"]*xx["W"] + xx["STRUCTURAL_UW"]/xx["RHO"] - (xx["NUTURB_XZ_DUDZ"] + xx["NUTURB_XZ_DWDX"])/xx["RHO"] for xx in x]
+    #### we multiply by rho cp = rho (r/Pth) (Pth CP/r):
+    ####  * r/Pth: because we use grad T instead of grad 1/rho
+    ####  * Pth Cp/r: because div_lambda_grad_T will be multiplied by r/Cp/Pth
+    ####              but this should not
+    ####  * rho: required in the favre formulation
+    out["u_theta"]   = [xx["UT"] - xx["U"]*xx["T"] + (xx["STRUCTURAL_USCALAR"] - 2 * xx["KAPPATURB_X_DSCALARDX"])/(xx["RHO"] * Cp) for xx in x]
+    out["v_theta"]   = [xx["WT"] - xx["W"]*xx["T"] + (xx["STRUCTURAL_WSCALAR"] - 2 * xx["KAPPATURB_Z_DSCALARDZ"])/(xx["RHO"] * Cp) for xx in x]
     out["theta_rms"] = [xx["T2"] - xx["T"]*xx["T"] for xx in x]
     
     return out
@@ -575,35 +584,33 @@ def mean_dns(x: pd.DataFrame, ref) -> Dict[str, pd.DataFrame]:
     out["Cf"]  = x["MU"] * np.gradient(x["U"], x["coordonnee_K"], edge_order=2)
     return out
 
-def closure(xx, compressible_tau=False, compressible_pi=False):
+def closure(xx, Cp: Union[float, None]=None):
     """
     Gets the closure, with knowledge of the compressibility
     of a model
     """
+    if Cp is None:
+        from warnings import warn
+        warn("Implicitly using the function rms_les without setting Cp can be dangerous")
+        Cp = 1155
     fonc              = dict()
     struct            = dict()
+
+    rho = xx["RHO"]
     
-    struct["urms"]        = (xx["STRUCTURAL_UU"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"])) 
-    struct["vrms"]        = (xx["STRUCTURAL_WW"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"])) 
-    struct["wrms"]        = (xx["STRUCTURAL_WW"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"])) 
-    struct["uv"]          = (xx["STRUCTURAL_UW"]) 
-    struct["u_theta"]     = (xx["STRUCTURAL_USCALAR"]) 
-    struct["v_theta"]     = (xx["STRUCTURAL_WSCALAR"]) 
-    if compressible_tau:
-        struct["urms"]    = (xx["STRUCTURAL_UU"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"]))/xx["RHO"] 
-        struct["vrms"]    = (xx["STRUCTURAL_WW"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"]))/xx["RHO"] 
-        struct["wrms"]    = (xx["STRUCTURAL_WW"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"]))/xx["RHO"] 
-        struct["uv"]      = (xx["STRUCTURAL_UW"])/xx["RHO"]
-    if compressible_pi:
-        struct["u_theta"] = (xx["STRUCTURAL_USCALAR"])/xx["RHO"]
-        struct["v_theta"] = (xx["STRUCTURAL_WSCALAR"])/xx["RHO"]
+    struct["urms"]        = (xx["STRUCTURAL_UU"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"])) / rho
+    struct["vrms"]        = (xx["STRUCTURAL_WW"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"])) / rho
+    struct["wrms"]        = (xx["STRUCTURAL_WW"] - 1/3 * (xx["STRUCTURAL_UU"] + xx["STRUCTURAL_VV"] + xx["STRUCTURAL_WW"])) / rho
+    struct["uv"]          = (xx["STRUCTURAL_UW"]) / rho
+    struct["u_theta"]     = (xx["STRUCTURAL_USCALAR"])/(rho*Cp)
+    struct["v_theta"]     = (xx["STRUCTURAL_WSCALAR"])/(rho*Cp)
     
-    fonc["urms"]      = - 2 * (xx["NUTURB_XX_DUDX"] - 1/3 * (xx["NUTURB_XX_DUDX"] + xx["NUTURB_YY_DVDY"] + xx["NUTURB_ZZ_DWDZ"]))
-    fonc["vrms"]      = - 2 * (xx["NUTURB_ZZ_DWDZ"] - 1/3 * (xx["NUTURB_XX_DUDX"] + xx["NUTURB_YY_DVDY"] + xx["NUTURB_ZZ_DWDZ"]))
-    fonc["wrms"]      = - 2 * (xx["NUTURB_YY_DVDY"] - 1/3 * (xx["NUTURB_XX_DUDX"] + xx["NUTURB_YY_DVDY"] + xx["NUTURB_ZZ_DWDZ"]))
-    fonc["uv"]        = - (xx["NUTURB_XZ_DUDZ"] + xx["NUTURB_XZ_DWDX"])
-    fonc["u_theta"]   = - 2 * xx["KAPPATURB_X_DSCALARDX"]
-    fonc["v_theta"]   = - 2 * xx["KAPPATURB_Z_DSCALARDZ"]
+    fonc["urms"]      = - 2 * (xx["NUTURB_XX_DUDX"] - 1/3 * (xx["NUTURB_XX_DUDX"] + xx["NUTURB_YY_DVDY"] + xx["NUTURB_ZZ_DWDZ"])) / rho
+    fonc["vrms"]      = - 2 * (xx["NUTURB_ZZ_DWDZ"] - 1/3 * (xx["NUTURB_XX_DUDX"] + xx["NUTURB_YY_DVDY"] + xx["NUTURB_ZZ_DWDZ"])) / rho
+    fonc["wrms"]      = - 2 * (xx["NUTURB_YY_DVDY"] - 1/3 * (xx["NUTURB_XX_DUDX"] + xx["NUTURB_YY_DVDY"] + xx["NUTURB_ZZ_DWDZ"])) / rho
+    fonc["uv"]        = - (xx["NUTURB_XZ_DUDZ"] + xx["NUTURB_XZ_DWDX"]) / rho
+    fonc["u_theta"]   = - 2 * xx["KAPPATURB_X_DSCALARDX"] / (rho * Cp)
+    fonc["v_theta"]   = - 2 * xx["KAPPATURB_Z_DSCALARDZ"] / (rho * Cp)
     return fonc, struct
 
 def normalize_quantity(qtty, ref):
