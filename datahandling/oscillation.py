@@ -1,5 +1,6 @@
 from typing import Tuple, Dict, Type, Union
 import numpy as np
+from scipy.interpolate import CubicSpline, RegularGridInterpolator
 from .dataloader import DataLoaderPandas
 import pandas as pd
 from numpy import typing as npt
