@@ -2,78 +2,75 @@ from typing import Tuple, Dict, Type, Union
 import numpy as np
 from .dataloader import DataLoaderPandas
 import pandas as pd
+from numpy import typing as npt
 
 Ref = Type["RefData"]
 
 
-def ref_values(path: str, Cp=1005, h=0.029846 / 2) -> Tuple[Dict]:
+def ref_values(path: str, Cp=1005, h=0.029846 / 2, Tw={"hot": 293, "cold": 586}) -> Tuple[Dict]:
     hot = -1
     cold = 0
 
     ref = DataLoaderPandas(path, "statistiques").load_last()
-    # h = ref.index.values[-1]/2
-    Tw_hot = Twhot = ref["T"].iloc[hot]
-    Tw_cold = Twcold = ref["T"].iloc[cold]
-    Tw = {"hot": Tw_hot, "cold": Tw_cold}
 
     utau_temp = np.sqrt(
-        ref["NU"] * np.abs(np.gradient(ref["U"], ref.index, edge_order=2))
+        ref["MU"] / ref["RHO"] * np.abs(np.gradient(ref["U"], ref.index, edge_order=2))
     ).values
-    retau_temp = (utau_temp * h / ref["NU"]).values
+    utau = {"hot": utau_temp[-1], "cold": utau_temp[0]}
+
+    y = ref.index.values
+    middle = len(y) // 2
+
+    y = ref.index.values
+    y_plus_hot = (2 * h - y[middle:])[::-1] * utau["hot"] / ref["NU"].iloc[hot]
+    y_plus_cold = y[:middle] * utau["cold"] / ref["NU"].iloc[cold]
+
+    y_plus = yplus = {"hot": y_plus_hot, "cold": y_plus_cold}
+
+    retau_temp = (utau_temp * h * ref["RHO"] / ref["MU"]).values
 
     rho_bulk = rhobulk = np.trapz(ref["URHO"], ref.index) / np.trapz(
         ref["U"], ref.index
     )
     mu_bulk = mubulk = np.trapz(ref["MU"], ref.index) / (2 * h)
     u_bulk = ubulk = np.trapz(ref["URHO"], ref.index) / np.trapz(ref["RHO"], ref.index)
-    t_bulk = tbulk = np.trapz(ref["RHOUT_MOY"], ref.index) / np.trapz(
+    t_bulk = np.trapz(ref["RHOUT_MOY"], ref.index) / np.trapz(
         ref["URHO"], ref.index
     )
-    re_bulk = rebulk = ubulk * h * rhobulk / mubulk
+    re_bulk = ubulk * h * rhobulk / mubulk
 
-    theta_hot_temp = (ref["T"] - Tw_hot) / (t_bulk - Tw_hot)
-    theta_cold_temp = (ref["T"] - Tw_cold) / (t_bulk - Tw_cold)
+    Tw_hot = Tw["hot"]
+    Tw_cold = Tw["cold"]
+
+    theta_hot_temp  = (ref["T"].values[::-1][:middle] - Tw_hot ) / (t_bulk - Tw_hot)
+    theta_cold_temp = (ref["T"].values[:middle] - Tw_cold) / (t_bulk - Tw_cold)
     theta = {"hot": theta_hot_temp, "cold": theta_cold_temp}
 
     thetatau_temp = (
         ref["LAMBDADTDZ"] / (ref["RHO"] * Cp * utau_temp)
-    ).values  # {"hot":, "cold":}
+    ).values
+    phi_tau = {"hot": thetatau_temp[-1], "cold": thetatau_temp[0]}
 
-    utau = {"hot": utau_temp[-1], "cold": utau_temp[0]}
     retau = {"hot": retau_temp[-1], "cold": retau_temp[0]}
     thetatau = {"hot": thetatau_temp[-1], "cold": thetatau_temp[0]}
 
-    nusselt_hot_temp = 2 * np.gradient(theta_hot_temp, ref.index, edge_order=2)
-    nusselt_cold_temp = 2 * np.gradient(theta_cold_temp, ref.index, edge_order=2)
+    nusselt_hot_temp  = 2 * np.gradient(theta_hot_temp [:4], y_plus_hot [:4], edge_order=2)[0]
+    nusselt_cold_temp = 2 * np.gradient(theta_cold_temp[:4], y_plus_cold[:4], edge_order=2)[0]
 
-    nusselt = {"hot": nusselt_hot_temp[hot], "cold": nusselt_cold_temp[cold]}
+    nusselt = {"hot": nusselt_hot_temp, "cold": nusselt_cold_temp}
 
-    Cf_hot_temp = (
-        2 / (rebulk * ubulk**2) * np.gradient(ref["U"], ref.index, edge_order=2)[hot]
+    Cf_hot_temp  = (
+        2 * ref["MU"].values[hot ] / (rhobulk * ubulk**2) * np.gradient(ref["U"].values[::-1][:4], ref.index.values[::-1][:4], edge_order=2)[0]
     )
     Cf_cold_temp = (
-        2 / (rebulk * ubulk**2) * np.gradient(ref["U"], ref.index, edge_order=2)[cold]
+        2 * ref["MU"].values[cold] / (rhobulk * ubulk**2) * np.gradient(ref["U"].values      [:4], ref.index.values[:4 ],      edge_order=2)[0]
     )
 
     Cf = {"hot": Cf_hot_temp, "cold": Cf_cold_temp}
 
-    y = ref.index.values
-    middle = len(y) // 2
-
-    msh = y = ref.index.values
-    y_plus_hot = (2 * h - y[middle:])[::-1] * utau["hot"] / ref["NU"].iloc[hot]
-    y_plus_cold = y[:middle] * utau["cold"] / ref["NU"].iloc[cold]
-
-    y_plus = yplus = {"hot": y_plus_hot, "cold": y_plus_cold}
-
-    phi_tau = {
-        "hot": (ref["LAMBDADTDZ"]/(ref["RHO"]*Cp*utau["hot"])).values[hot], 
-        "cold": (ref["LAMBDADTDZ"]/(ref["RHO"]*Cp*utau["cold"])).values[cold]
-    }
 
     return (
         h,
-        Tw,
         utau,
         thetatau,
         retau,
@@ -95,10 +92,13 @@ def ref_values(path: str, Cp=1005, h=0.029846 / 2) -> Tuple[Dict]:
 
 
 class RefData(object):
-    def __init__(self, path: str, Cp=1005, h=0.029846 / 2) -> None:
+    def __init__(self, path: str, /, Cp: float=0, h: float=0, Tw:Dict[str, float]={"hot": 293, "cold": 586}) -> None:
+        assert Cp != 0, "Cp must be provided as a floating point value"
+        assert h != 0, "h must be provided as a floating point value"
         self.path = path
         self.Cp = self.cp = Cp
         self.h = h
+        self.Tw = self.tw = Tw
 
     def load(self, path=None, Cp=None):
         if not path:
@@ -106,8 +106,7 @@ class RefData(object):
         if not Cp:
             Cp = self.Cp
         (
-            self.h,
-            self.Tw,
+            _,
             self.utau,
             self.thetatau,
             self.retau,
@@ -125,7 +124,7 @@ class RefData(object):
             self.df,
             self.mu_bulk,
             self.phi_tau,
-        ) = ref_values(path, self.Cp, h=self.h)
+        ) = ref_values(path, self.Cp, h=self.h, Tw=self.Tw)
         self.ubulk = self.u_bulk
         self.rebulk = self.re_bulk
 
@@ -156,10 +155,10 @@ class RefData(object):
 
 
 
-def osc_post_treat(
-    df: pd.DataFrame, ref: Ref, *, ignore_idx: int = 0
-) -> Tuple[Union[np.typing.ArrayLike, pd.DataFrame]]:
-    theta_hot = [((d["T"] - ref.Tw["hot"]) / (ref.t_bulk - ref.Tw["hot"])) for d in df]
+def osc_post_treat(df: pd.DataFrame, ref: Ref) -> Tuple[Union[npt.ArrayLike, pd.DataFrame]]:
+    theta_hot = [
+        ((d["T"] - ref.Tw["hot"]) / (ref.t_bulk - ref.Tw["hot"])) for d in df
+    ]
 
     theta_cold = [
         ((d["T"] - ref.Tw["cold"]) / (ref.t_bulk - ref.Tw["cold"])) for d in df
@@ -169,14 +168,14 @@ def osc_post_treat(
     Nu_hot = [
         2
         * t.groupby("time").apply(
-            lambda x: np.gradient(x[-4:], ref.yplus[-4:], edge_order=2)[-1]
+            lambda x: np.gradient(x.values[::-1][:4], ref.yplus["hot"][:4], edge_order=2)[0]
         )
         for t in theta_hot
     ]
     Nu_cold = [
         2
         * t.groupby("time").apply(
-            lambda x: np.gradient(x[:4], ref.yplus[:4], edge_order=2)[0]
+            lambda x: np.gradient(x[:4], ref.yplus["cold"][:4], edge_order=2)[0]
         )
         for t in theta_cold
     ]
@@ -194,19 +193,20 @@ def osc_post_treat(
     tplus = t_plus = [t - t[0] for t in tplus]
 
     Cf_act_hot = [
-        2
-        / (ref.ubulk * ref.ubulk * ref.rebulk)
+        2 * d["MU"].groupby("time").apply(lambda x: x.iloc[-1])
         * d["U"]
         .groupby("time")
-        .apply(lambda x: np.gradient(x[-4:], ref.yplus[-4:], edge_order=2)[-1])
+        .apply(lambda x: np.gradient(x.values[::-1][:4], ref.y[::-1][:4], edge_order=2)[0])
+        / (ref.rho_bulk * (ref.u_bulk**2))
         for d in df
     ]
     Cf_act_cold = [
         2
-        / (ref.ubulk * ref.ubulk * ref.rebulk)
+        * d["MU"].groupby("time").apply(lambda x: x.iloc[0])
         * d["U"]
         .groupby("time")
-        .apply(lambda x: np.gradient(x[:4], ref.yplus[:4], edge_order=2)[0])
+        .apply(lambda x: np.gradient(x.values[:4], ref.y[:4], edge_order=2)[0])
+        / (ref.rho_bulk * (ref.u_bulk**2))
         for d in df
     ]
 
@@ -241,7 +241,7 @@ class Osc(object):
 
 def phase_average_boundary(
     qty, tplus, freq: float, *, ncycles=float(5), sampling_rate=64
-) -> np.typing.ArrayLike:
+) -> npt.ArrayLike:
     """
     Returns phase average of given quantity
     """
