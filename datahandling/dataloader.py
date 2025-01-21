@@ -13,13 +13,14 @@ class DataLoader:
     DataLoader class, loads data and lets you do stuff with it
     """
 
-    def __init__(self,
-                 directory: str = "rep22",
-                 type_stat: str = "statistiques",
-                 columns: Union[str, int, None] = None,
-                 separator: str = "\s",
-                 type_file: str = ".txt"
-                 ):
+    def __init__(
+        self,
+        directory: str = "rep22",
+        type_stat: str = "statistiques",
+        columns: Union[str, int, None] = None,
+        separator: str = "\s",
+        type_file: str = ".txt",
+    ):
         self.directory: str = directory
         self.type_stat: str = type_stat
         self.columns: Union[str, int, None] = columns
@@ -38,9 +39,9 @@ class DataLoader:
             Name of columns of given .txt file
         """
         lines = []
-        with open(filename, 'r') as input:
+        with open(filename, "r") as input:
             for line in input:
-                if '#' not in line:
+                if "#" not in line:
                     break
                 lines = [*lines, line]
         if self.type_stat == "moyenne_spatiale":
@@ -48,11 +49,10 @@ class DataLoader:
         elif self.type_stat == "statistiques":
             lines = lines[2:]
         else:
-            raise ValueError("Type of statistics "
-                             f"{self.type_stat} not recognized")
+            raise ValueError("Type of statistics " f"{self.type_stat} not recognized")
 
         for i in range(len(lines)):
-            lines[i] = re.sub(r'# colonne [0-9]+ : ', '', lines[i])
+            lines[i] = re.sub(r"# colonne [0-9]+ : ", "", lines[i])
             lines[i] = lines[i].replace("\n", "")
         self.header = np.array(lines)
         # key2num_dict: for letter key, we have an int
@@ -61,9 +61,9 @@ class DataLoader:
         self.key2num_dict = {h: i for i, h in enumerate(self.header)}
         self.num2key_dict = {i: h for i, h in enumerate(self.header)}
 
-    def parse_stats_directory(self,
-                              directory: Union[str, None] = None
-                              ) -> Tuple[List[str], npt.ArrayLike]:
+    def parse_stats_directory(
+        self, directory: Union[str, None] = None
+    ) -> Tuple[List[str], npt.ArrayLike]:
         """
         Gives names of files needed, as well as time steps for respective stats
         ----------
@@ -87,11 +87,13 @@ class DataLoader:
         time = []
         file_path = []
         from os.path import join
-        file_path = glob(join(self.directory, self.type_stat+"*.txt"))
+
+        file_path = glob(join(self.directory, self.type_stat + "*.txt"))
 
         for fp in file_path:
-            fp = fp.replace(os.path.join(self.directory.replace(
-                "*", ""), f"{self.type_stat}_"), "")
+            fp = fp.replace(
+                os.path.join(self.directory.replace("*", ""), f"{self.type_stat}_"), ""
+            )
             fp = fp.replace(".txt", "")
             time = [*time, float(fp)]
         return file_path, np.array(time)
@@ -182,10 +184,7 @@ class DataLoader:
         self.shape = self.data.shape
         self.space = self.data[:, 0]
         self.data = pd.DataFrame(
-            data=self.data,
-            index=self.space,
-            columns=self.header,
-            dtype=np.float32
+            data=self.data, index=self.space, columns=self.header, dtype=np.float32
         )
         # Hacky way to force it to use pandas in this case
         self.__getitem__ = self.data.__getitem__
@@ -230,9 +229,7 @@ class DataLoader:
         return variable
 
     def column_handler_key2num(
-        self,
-            variable: Union[str, list,
-                            int, npt.ArrayLike]
+        self, variable: Union[str, list, int, npt.ArrayLike]
     ) -> Tuple[int]:
         """
         column handler, handles which columns are to be saved. If you only study the
@@ -251,9 +248,11 @@ class DataLoader:
 
         if isinstance(variable, str):
             return (self.key2num(variable),)
-        return (variable)
+        return variable
 
-    def column_handler_num2key(self, variable: Union[str, list, int, npt.ArrayLike]) -> Tuple:
+    def column_handler_num2key(
+        self, variable: Union[str, list, int, npt.ArrayLike]
+    ) -> Tuple:
         """
         column handler, handles which columns are to be saved. If you only study the
         temperature for instance, there's no need for loading other variables. This function
@@ -272,11 +271,10 @@ class DataLoader:
 
         if isinstance(variable, str):
             return (self.num2key(variable),)
-        return (variable)
+        return variable
 
     def __getitem__(
-        self,
-        column: Union[str, list, int, npt.ArrayLike]
+        self, column: Union[str, list, int, npt.ArrayLike]
     ) -> Union[npt.ArrayLike]:
         """
         Gets the element of interest whether it be a string, a list, or a numpy array.
@@ -305,11 +303,11 @@ class DataLoaderPandas:
 
     def __init__(
         self,
-            directory: str = "./",
-            type_stat: Union[str, None] = None,
-            columns: Union[str, int, None] = None,
-            separator: str = "\s",
-            type_file: str = ".txt"
+        directory: str = "./",
+        type_stat: Union[str, None] = None,
+        columns: Union[str, int, None] = None,
+        separator: str = "\s",
+        type_file: str = ".txt",
     ):
         """
         The initialisation function for the class. For a specific directory
@@ -317,7 +315,9 @@ class DataLoaderPandas:
         or mean over space and time
         """
         self.directory = directory
-        assert type_stat is not None, "You need to provide a type of statistics, beeing either 'statistiques' or 'moyenne_spatiale'"
+        assert (
+            type_stat is not None
+        ), "You need to provide a type of statistics, beeing either 'statistiques' or 'moyenne_spatiale'"
         self.type_stat = type_stat
         self.columns = columns
         self.separator = separator
@@ -335,9 +335,9 @@ class DataLoaderPandas:
             Name of columns of given .txt file
         """
         lines = []
-        with open(filename, 'r') as input:
+        with open(filename, "r") as input:
             for line in input:
-                if '#' not in line:
+                if "#" not in line:
                     break
                 lines = [*lines, line]
         if self.type_stat == "moyenne_spatiale":
@@ -345,11 +345,10 @@ class DataLoaderPandas:
         elif self.type_stat == "statistiques":
             lines = lines[2:]
         else:
-            raise ValueError("Type of statistics "
-                             f"{self.type_stat} not recognized")
+            raise ValueError("Type of statistics " f"{self.type_stat} not recognized")
 
         for i in range(len(lines)):
-            lines[i] = re.sub(r'# colonne [0-9]+ : ', '', lines[i])
+            lines[i] = re.sub(r"# colonne [0-9]+ : ", "", lines[i])
             lines[i] = lines[i].replace("\n", "")
         self.header = np.array(lines)
         # key2num_dict: for letter key, we have an int
@@ -367,7 +366,8 @@ class DataLoaderPandas:
         """
 
         import platform
-        if platform.system() == 'Windows':
+
+        if platform.system() == "Windows":
             return os.path.getctime(path_to_file)
         else:
             stat = os.stat(path_to_file)
@@ -379,9 +379,7 @@ class DataLoaderPandas:
                 return stat.st_mtime
 
     def parse_stats_directory(
-        self,
-            directory: Union[str, None] = None,
-            last_24h: bool = False
+        self, directory: Union[str, None] = None, last_24h: bool = False
     ) -> Tuple[List[str], npt.ArrayLike]:
         """
         Gives names of files needed, as well as time steps for respective stats
@@ -406,28 +404,37 @@ class DataLoaderPandas:
         if isinstance(directory, (list, tuple)) and len(directory) > 1:
             # In the case the user provides multiple directories to explore:
             from glob import iglob
+
             def multi_glob(patterns):
                 for pattern in patterns:
                     yield from iglob(pattern)
-            directory_and_pattern = [os.path.join(d, f"{self.type_stat}_*") for d in directory]
+
+            directory_and_pattern = [
+                os.path.join(d, f"{self.type_stat}_*") for d in directory
+            ]
             list_of_files = list(multi_glob(directory_and_pattern))
         else:
             # In the case the user gave one directory
             from glob import glob
+
             list_of_files = glob(os.path.join(self.directory, f"{self.type_stat}_*"))
 
         time = []
         file_path = []
         # Match stat files
-        file_path = sorted(list_of_files, key=lambda x: float(x.split(self.type_stat+"_")[1].split(".txt")[0]))
+        file_path = sorted(
+            list_of_files,
+            key=lambda x: float(x.split(self.type_stat + "_")[1].split(".txt")[0]),
+        )
         # If we only want the last 24 hours files
         import time
+
         if last_24h:
             last_24h_files = []
             """ import datetime as dt """
             """ today = dt.datetime.now().date() """
             for file in file_path:
-                if abs(self.creation_date(file) - time.time()) <= 24*60*60:
+                if abs(self.creation_date(file) - time.time()) <= 24 * 60 * 60:
                     last_24h_files.append(file)
             file_path = last_24h_files
 
@@ -437,22 +444,25 @@ class DataLoaderPandas:
         final_files = []
         for file_paths in file_path:
             file_name = os.path.basename(file_paths)
-            floating_point_number = file_name.split(
-                self.type_stat + "_")[1].split(".txt")[0]
+            floating_point_number = file_name.split(self.type_stat + "_")[1].split(
+                ".txt"
+            )[0]
             if floating_point_number in unique_files:
                 duplicates.append(file_paths)
             else:
                 unique_files.add(floating_point_number)
                 final_files.append(
-                    f'{os.path.dirname(file_paths)}/{self.type_stat}_{floating_point_number}.txt')
+                    f"{os.path.dirname(file_paths)}/{self.type_stat}_{floating_point_number}.txt"
+                )
 
         file_path = final_files
 
-        pattern = f'[^/]+/{self.type_stat}_(\\d+\\.\\d+)\\.txt'
-        time = [float(match)
-                for fp in file_path for match in re.findall(pattern, fp)]
-        return file_path, np.array(time)
-
+        # pattern = f"[^/]+/{self.type_stat}_(\\d+\\.\\d+)\\.txt"
+        # time = [float(match) for fp in file_path for match in re.findall(pattern, fp)]
+        time = np.array([
+            float(x.split(self.type_stat + "_")[1].split(".txt")[0]) for x in file_path
+        ])
+        return file_path, time
 
     def load_first(self) -> pd.DataFrame:
         """
@@ -512,7 +522,9 @@ class DataLoaderPandas:
             dtype=np.float32,
         )
 
-    def load_data(self, *, verbose=False, parallel=False, pbar=False) -> Union[List, pd.DataFrame, None]:
+    def load_data(
+        self, *, verbose=False, parallel=False, pbar=False
+    ) -> Union[List, pd.DataFrame, None]:
         """
         loads data into data variable of class
         Parameters:
@@ -524,8 +536,10 @@ class DataLoaderPandas:
         """
         if verbose and pbar:
             import warnings
-            warnings.warn("Using verbose and pbar flags together shows ugly output when used")
 
+            warnings.warn(
+                "Using verbose and pbar flags together shows ugly output when used"
+            )
 
         self.file_path, self.time = self.parse_stats_directory()
         self.read_header(self.file_path[0])
@@ -538,7 +552,10 @@ class DataLoaderPandas:
             cols = self.columns_index
         if pbar:
             from tqdm import tqdm
-            progress_bar = tqdm(zip(self.file_path, self.time), total=len(self.file_path))
+
+            progress_bar = tqdm(
+                zip(self.file_path, self.time), total=len(self.file_path)
+            )
         else:
             progress_bar = zip(self.file_path, self.time)
         if parallel:
@@ -551,14 +568,13 @@ class DataLoaderPandas:
             for file, time in progress_bar:
                 if verbose:
                     print(file, time)
-                dd = delayed(np.loadtxt)(file, usecols=cols) 
+                dd = delayed(np.loadtxt)(file, usecols=cols)
                 data.append(dd)
             tuple_of_data = compute(*data)
             data = self.data = np.concatenate(tuple_of_data)
             self.space = np.loadtxt(self.file_path[0], usecols=0)
             indexes = pd.MultiIndex.from_product(
-                [self.time, self.space],
-                names=("time", "k")
+                [self.time, self.space], names=("time", "k")
             )
             columns = self.header
             data = pd.DataFrame(data, columns=columns, index=indexes)
@@ -574,8 +590,7 @@ class DataLoaderPandas:
             data = np.concatenate(data)
             self.space = np.loadtxt(self.file_path[0], usecols=0)
             indexes = pd.MultiIndex.from_product(
-                [self.time, self.space],
-                names=("time", "k")
+                [self.time, self.space], names=("time", "k")
             )
             columns = self.header
             data = pd.DataFrame(data, columns=columns, index=indexes)
@@ -610,17 +625,14 @@ class DataLoaderPandas:
         data = np.concatenate(data)
         self.space = np.loadtxt(self.file_path[0], usecols=0)
         indexes = pd.MultiIndex.from_product(
-            [self.time, self.space],
-            names=("time", "k")
+            [self.time, self.space], names=("time", "k")
         )
         columns = self.header
         data = pd.DataFrame(data, columns=columns, index=indexes)
         return data
 
     def column_handler_key2num(
-        self,
-            variable: Union[str, list,
-                            int, npt.ArrayLike]
+        self, variable: Union[str, list, int, npt.ArrayLike]
     ) -> Tuple[int]:
         """
         column handler, handles which columns are to be saved. If you only study the
@@ -639,15 +651,18 @@ class DataLoaderPandas:
 
         if isinstance(variable, str):
             return (self.key2num(variable),)
-        return (variable)
+        return variable
 
     def integrate_statistics(self) -> None:
-        self.statistics = [(1/self.time[-1] - self.time[0]) * simpson(
-            self.data[..., num], x=self.time, axis=0
-        )
-            for num in range(self.data.shape[-1])]
+        self.statistics = [
+            (1 / self.time[-1] - self.time[0])
+            * simpson(self.data[..., num], x=self.time, axis=0)
+            for num in range(self.data.shape[-1])
+        ]
 
-    @ staticmethod
+    @staticmethod
     def mean_over_n_times(df: pd.DataFrame, n: int = 0):
-        assert n > 0, "You need to specify a positive number of timesteps to do the mean over"
+        assert (
+            n > 0
+        ), "You need to specify a positive number of timesteps to do the mean over"
         return df.groupby("k").apply(lambda x: x.iloc[-n]).groupby(level=0).mean()
