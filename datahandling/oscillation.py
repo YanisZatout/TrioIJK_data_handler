@@ -8,11 +8,11 @@ from numpy import typing as npt
 Ref = Type["RefData"]
 
 
-def ref_values(path: str, Cp=1005, h=0.029846 / 2, Tw={"hot": 293, "cold": 586}) -> Tuple[Dict]:
+def ref_values(ref_df: pd.DataFrame, path: str, Cp=1005, h=0.029846 / 2, Tw={"hot": 293, "cold": 586}) -> Tuple[Dict]:
     hot = -1
     cold = 0
 
-    ref = DataLoaderPandas(path, "statistiques").load_last()
+    # ref = DataLoaderPandas(path, "statistiques").load_last()
 
     utau_temp = np.sqrt(
         ref["MU"] / ref["RHO"] * np.abs(np.gradient(ref["U"], ref.index, edge_order=2))
@@ -106,6 +106,7 @@ class RefData(object):
             path = self.path
         if not Cp:
             Cp = self.Cp
+        ref_df = DataLoaderPandas(path, "statistiques").load_last()
         (
             _,
             self.utau,
@@ -125,7 +126,7 @@ class RefData(object):
             self.df,
             self.mu_bulk,
             self.phi_tau,
-        ) = ref_values(path, self.Cp, h=self.h, Tw=self.Tw)
+        ) = ref_values(ref_df, self.Cp, h=self.h, Tw=self.Tw)
         self.ubulk = self.u_bulk
         self.rebulk = self.re_bulk
 
