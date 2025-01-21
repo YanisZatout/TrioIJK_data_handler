@@ -8,7 +8,7 @@ from numpy import typing as npt
 Ref = Type["RefData"]
 
 
-def ref_values(ref_df: pd.DataFrame, path: str, Cp=1005, h=0.029846 / 2, Tw={"hot": 293, "cold": 586}) -> Tuple[Dict]:
+def ref_values(ref: pd.DataFrame, Cp=1005, h=0.029846 / 2, Tw={"hot": 293, "cold": 586}) -> Tuple[Dict]:
     hot = -1
     cold = 0
 
