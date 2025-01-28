@@ -289,3 +289,49 @@ def adim_rms_dns(ref):
         out2["theta_rms"][side] /= (ref.thetatau[side] * ref.thetatau[side])
 
     return out2
+
+
+
+def pad(x, size):
+    sizex, sizey, sizez = size
+    x = np.pad(x, ((sizex // 2, sizex // 2), (0, 0), (0, 0)), "wrap")
+    x = np.pad(
+        x,
+        (
+            (0, 0),
+            (
+                sizey // 2,
+                sizey // 2,
+            ),
+            (0, 0),
+        ),
+        "wrap",
+    )
+    x = np.pad(x, ((0, 0), (0, 0), (sizez // 2, sizez // 2)), "edge")
+    return x
+
+def weighted_convolution(x, coord_face, size):
+    """
+    Weighted convolution for filtering DNS time steps
+    """
+    import scipy.signal as si
+
+    sx, sy, sz = size
+    out = np.zeros_like(x)
+
+    padded = pad(x, size)
+    filterx = si.get_window("boxcar", sx).reshape(-1, 1, 1)
+    filterx /= filterx.sum()
+    filtery = si.get_window("boxcar", sy).reshape(1, -1, 1)
+    filtery /= filtery.sum()
+
+    padded = si.convolve(padded, filterx, "valid")
+    padded = si.convolve(padded, filtery, "valid")
+    cell_size = np.diff(coord_face[-1])
+    cell_size = np.pad(cell_size, (sz // 2, sz // 2), "edge")
+    for k in range(x.shape[-1]):
+        kernel = cell_size[k : k + sz] / cell_size[k : k + sz].sum()
+        out[..., k : k + 1] = si.convolve(
+            padded[..., k : k + sz], kernel[None, None], "valid"
+        )
+    return out
