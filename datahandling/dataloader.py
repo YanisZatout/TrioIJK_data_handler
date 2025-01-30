@@ -493,7 +493,7 @@ class DataLoaderPandas:
             dtype=np.float32,
         )
 
-    def load_last(self) -> pd.DataFrame:
+    def load_last(self, path=None) -> pd.DataFrame:
         """
         Loads data into class data variable for the last time
         step for the given statistics
@@ -504,13 +504,23 @@ class DataLoaderPandas:
         Returs:
         None
         """
+        # TODO: Change this mess as to make it clearer.
+        # For now it loads a file path is given
+        # Or a broad directory path is given
+        # But it's still a mess
+        pattern = re.compile(f".*/{self.type_stat}_[0-9]\.[0-9]+.txt")
+        specific_file = bool(pattern.match(str(path)))
+        if not specific_file:
+            data = []
+            self.file_path, self.time = self.parse_stats_directory()
+            last_time = f"{self.type_stat}_{self.time[-1]}"
+            self.read_header(self.file_path[0])
+            file = self.file_path[-1]
+        else:
+            # Directly give filepath
+            file = path
+            self.read_header(file)
 
-        data = []
-        self.file_path, self.time = self.parse_stats_directory()
-        last_time = f"{self.type_stat}_{self.time[-1]}"
-        self.read_header(self.file_path[0])
-
-        file = self.file_path[-1]
         data = np.loadtxt(file)
         data = np.array(data)
         self.shape = data.shape
