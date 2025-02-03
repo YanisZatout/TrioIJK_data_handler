@@ -78,6 +78,19 @@ class LesData(object):
         )
 
 
+def adim_y_face(y_face, ref):
+    utau = ref.utau
+    nu = ref.df["NU"]
+    middle = ref.middle
+    y = y_face
+    h = ref.h
+    hot = -1
+    cold = 0
+    y_plus_hot = (2 * h - y[middle:])[::-1] * utau["hot"] / nu.iloc[hot]
+    y_plus_cold = y[:middle] * utau["cold"] / ref["NU"].iloc[cold]
+    return {"hot": y_plus_hot, "cold": y_plus_cold}
+
+
 def adim_mean_les(df, ref, mod, mesh):
     r"""
     Adimentionalize mean quantities for LES such that:
