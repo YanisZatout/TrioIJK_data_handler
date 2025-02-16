@@ -335,3 +335,71 @@ def weighted_convolution(x, coord_face, size):
             padded[..., k : k + sz], kernel[None, None], "valid"
         )
     return out
+
+
+def adim_y_face(y_face, ref):
+    utau = ref.utau
+    nu = ref.df["NU"]
+    y = y_face
+    h = ref.h
+    hot = -1
+    cold = 0
+    
+    y_plus_hot = (2 * h - y)[::-1] * utau["hot"] / nu.iloc[hot]
+    y_plus_cold = y * utau["cold"] / nu.iloc[cold]
+    
+    return {"hot": y_plus_hot, "cold": y_plus_cold}
+
+
+def compute_eps_quantity_side(
+    quantity, les, dns, ref_les, ref_dns, model, mesh, Cp, side
+):
+    from scipy.interpolate import CubicSpline
+    try:
+        les = adim_rms_les(les, ref_les, model, mesh, Cp)[quantity][side]
+    except:
+        les = adim_mean_les(les, ref_les, model, mesh)[quantity][side]
+    dns = dns[quantity][side]
+    ref_les = ref_les[model][mesh]
+    
+    yplus_dns = ref_dns.yplus[side]
+    yplus_les = ref_les.yplus[side]
+    
+    spline = CubicSpline(yplus_dns, dns)
+    outspline = spline(yplus_les)
+    y_face = ref_les.y
+    yplus_les_face = adim_y_face(y_face, ref_les)[side]
+    logy_les = np.log(yplus_les_face[1:]/yplus_les_face[:-1])[:ref_les.middle]
+    
+    diff = (les - outspline)
+    out = logy_les * np.abs(diff * les)
+    
+    denom = logy_les * outspline**2
+    
+    out = out/denom
+    return out.sum()
+
+
+def compute_eps(quantity, les, dns, ref_les, ref_dns, model, mesh, Cp):
+    return compute_eps_quantity_side(
+            quantity,
+            les,
+            dns,
+            ref_les,
+            ref_dns,
+            model,
+            mesh,
+            Cp,
+            "hot"
+        ) + compute_eps_quantity_side(
+                quantity,
+                les,
+                dns,
+                ref_les,
+                ref_dns,
+                model,
+                mesh,
+                Cp,
+                "cold"
+        )
+
