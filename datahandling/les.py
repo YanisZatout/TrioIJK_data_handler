@@ -78,19 +78,6 @@ class LesData(object):
         )
 
 
-def adim_y_face(y_face, ref):
-    utau = ref.utau
-    nu = ref.df["NU"]
-    middle = ref.middle
-    y = y_face
-    h = ref.h
-    hot = -1
-    cold = 0
-    y_plus_hot = (2 * h - y[middle:])[::-1] * utau["hot"] / nu.iloc[hot]
-    y_plus_cold = y[:middle] * utau["cold"] / ref["NU"].iloc[cold]
-    return {"hot": y_plus_hot, "cold": y_plus_cold}
-
-
 def adim_mean_les(df, ref, mod, mesh):
     r"""
     Adimentionalize mean quantities for LES such that:
@@ -474,10 +461,8 @@ def adim_y_face(y_face, ref):
     h = ref.h
     hot = -1
     cold = 0
-    
-    y_plus_hot = (2 * h - y)[::-1] * utau["hot"] / nu.iloc[hot]
-    y_plus_cold = y * utau["cold"] / nu.iloc[cold]
-    
+    y_plus_hot = (2 * h - y) * utau["hot"] / nu.iloc[hot]
+    y_plus_cold = y * utau["cold"] / ref["NU"].iloc[cold]
     return {"hot": y_plus_hot, "cold": y_plus_cold}
 
 
@@ -485,10 +470,7 @@ def compute_eps_quantity_side(
     quantity, les, dns, ref_les, ref_dns, model, mesh, Cp, side
 ):
     from scipy.interpolate import CubicSpline
-    try:
-        les = adim_rms_les(les, ref_les, model, mesh, Cp)[quantity][side]
-    except:
-        les = adim_mean_les(les, ref_les, model, mesh)[quantity][side]
+    les = les[quantity][side]
     dns = dns[quantity][side]
     ref_les = ref_les[model][mesh]
     
@@ -505,9 +487,8 @@ def compute_eps_quantity_side(
     out = logy_les * np.abs(diff * les)
     
     denom = logy_les * outspline**2
-    
-    out = out/denom
-    return out.sum()
+    out = out.sum()/denom.sum()
+    return out
 
 
 def compute_eps(quantity, les, dns, ref_les, ref_dns, model, mesh, Cp):
