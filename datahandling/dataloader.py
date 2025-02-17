@@ -233,7 +233,7 @@ class DataLoaderPandas:
             file = path
             self.read_header(file)
 
-        data = np.loadtxt(file)
+        data = np.loadtxt(file, dtype=np.float64)
         data = np.array(data)
         self.shape = data.shape
         self.space = data[:, 0]
@@ -241,7 +241,7 @@ class DataLoaderPandas:
             data=data,
             index=self.space,
             columns=self.header,
-            dtype=np.float32,
+            dtype=np.float64,
         )
 
     def load_data(
@@ -294,7 +294,7 @@ class DataLoaderPandas:
                 data.append(dd)
             tuple_of_data = compute(*data)
             data = self.data = np.concatenate(tuple_of_data)
-            self.space = np.loadtxt(self.file_path[0], usecols=0)
+            self.space = np.loadtxt(self.file_path[0], usecols=0, dtype=np.float64)
             indexes = pd.MultiIndex.from_product(
                 [self.time, self.space], names=("time", "k")
             )
@@ -315,7 +315,7 @@ class DataLoaderPandas:
                 [self.time, self.space], names=("time", "k")
             )
             columns = self.header
-            data = pd.DataFrame(data, columns=columns, index=indexes)
+            data = pd.DataFrame(data, columns=columns, index=indexes, dtype=np.float64)
             return data
 
     def load_last_24h(self, *, verbose=False) -> Union[List, pd.DataFrame]:
