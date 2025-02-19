@@ -462,7 +462,7 @@ def adim_y_face(y_face, ref):
     hot = -1
     cold = 0
     y_plus_hot = (2 * h - y) * utau["hot"] / nu.iloc[hot]
-    y_plus_cold = y * utau["cold"] / ref["NU"].iloc[cold]
+    y_plus_cold = y * utau["cold"] / nu.iloc[cold]
     return {"hot": y_plus_hot, "cold": y_plus_cold}
 
 
