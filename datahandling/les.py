@@ -366,7 +366,9 @@ def adim_rms_dns(ref):
         - df["U"] ** 2
         - 1
         / 3
-        * (df["UU"] - df["U"] ** 2 + df["VV"] - df["V"] ** 2 + df["WW"] - df["W"] ** 2)
+        * (df["UU"] - df["U"] ** 2
+           + df["VV"] - df["V"] ** 2
+           + df["WW"] - df["W"] ** 2)
     )
 
     out["vrms"] = (
@@ -374,7 +376,9 @@ def adim_rms_dns(ref):
         - df["W"] ** 2
         - 1
         / 3
-        * (df["UU"] - df["U"] ** 2 + df["VV"] - df["V"] ** 2 + df["WW"] - df["W"] ** 2)
+        * (df["UU"] - df["U"] ** 2
+           + df["VV"] - df["V"] ** 2
+           + df["WW"] - df["W"] ** 2)
     )
 
     out["wrms"] = (
@@ -382,7 +386,9 @@ def adim_rms_dns(ref):
         - df["V"] ** 2
         - 1
         / 3
-        * (df["UU"] - df["U"] ** 2 + df["VV"] - df["V"] ** 2 + df["WW"] - df["W"] ** 2)
+        * (df["UU"] - df["U"] ** 2
+           + df["VV"] - df["V"] ** 2
+           + df["WW"] - df["W"] ** 2)
     )
 
     out["u_theta"] = df["UT"] - df["U"] * df["T"]
@@ -447,9 +453,9 @@ def weighted_convolution(x, coord_face, size):
     cell_size = np.diff(coord_face[-1])
     cell_size = np.pad(cell_size, (sz // 2, sz // 2), "edge")
     for k in range(x.shape[-1]):
-        kernel = cell_size[k : k + sz] / cell_size[k : k + sz].sum()
-        out[..., k : k + 1] = si.convolve(
-            padded[..., k : k + sz], kernel[None, None], "valid"
+        kernel = cell_size[k:k+sz] / cell_size[k:k+sz].sum()
+        out[..., k:k+1] = si.convolve(
+            padded[..., k:k+sz], kernel[None, None], "valid"
         )
     return out
 
@@ -461,7 +467,7 @@ def adim_y_face(y_face, ref):
     h = ref.h
     hot = -1
     cold = 0
-    y_plus_hot = (2 * h - y) * utau["hot"] / nu.iloc[hot]
+    y_plus_hot = (2 * h - y)[::-1] * utau["hot"] / nu.iloc[hot]
     y_plus_cold = y * utau["cold"] / nu.iloc[cold]
     return {"hot": y_plus_hot, "cold": y_plus_cold}
 
@@ -473,19 +479,19 @@ def compute_eps_quantity_side(
     les = les[quantity][side]
     dns = dns[quantity][side]
     ref_les = ref_les[model][mesh]
-    
+
     yplus_dns = ref_dns.yplus[side]
     yplus_les = ref_les.yplus[side]
-    
+
     spline = CubicSpline(yplus_dns, dns)
     outspline = spline(yplus_les)
     y_face = ref_les.y
     yplus_les_face = adim_y_face(y_face, ref_les)[side]
     logy_les = np.log(yplus_les_face[1:]/yplus_les_face[:-1])[:ref_les.middle]
-    
+
     diff = (les - outspline)
     out = logy_les * np.abs(diff * les)
-    
+
     denom = logy_les * outspline**2
     out = out.sum()/denom.sum()
     return out
@@ -513,4 +519,3 @@ def compute_eps(quantity, les, dns, ref_les, ref_dns, model, mesh, Cp):
                 Cp,
                 "cold"
         )
-
