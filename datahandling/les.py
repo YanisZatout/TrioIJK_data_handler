@@ -238,8 +238,7 @@ def adim_rms_les(df, ref, mod, mesh, Cp):
     )
     out["wrms"] += (
         +df["STRUCTURAL_VV"] / df["RHO"]
-        - 1
-        / 3
+        - 1 / 3
         * (df["STRUCTURAL_UU"] + df["STRUCTURAL_VV"] + df["STRUCTURAL_WW"])
         / df["RHO"]
     )
@@ -247,6 +246,10 @@ def adim_rms_les(df, ref, mod, mesh, Cp):
         df["NUTURB_YY_DVDY"]
         - 1 / 3 * (df["NUTURB_XX_DUDX"] + df["NUTURB_YY_DVDY"] + df["NUTURB_ZZ_DWDZ"])
     )
+
+    out["uv"] = df["UW"] - df["U"] * df["W"]
+    out["uv"] += df["STRUCTURAL_UW"]/df["RHO"]
+    out["uv"] += - (df["NUTURB_XZ_DUDZ"] + df["NUTURB_XZ_DWDX"])
 
     out["u_theta"] = df["UT"] - df["U"] * df["T"]
     out["u_theta"] += -2 * df["KAPPATURB_X_DSCALARDX"] + df["STRUCTURAL_USCALAR"] / (
@@ -271,6 +274,7 @@ def adim_rms_les(df, ref, mod, mesh, Cp):
         out2["urms"][side] /= ref.utau[side] * ref.utau[side]
         out2["vrms"][side] /= ref.utau[side] * ref.utau[side]
         out2["wrms"][side] /= ref.utau[side] * ref.utau[side]
+        out2["uv"][side]   /= ref.utau[side] * ref.utau[side]
         out2["u_theta"][side] /= ref.utau[side] * ref.thetatau[side]
         out2["v_theta"][side] /= ref.utau[side] * ref.thetatau[side]
         out2["theta_rms"][side] /= ref.thetatau[side] * ref.thetatau[side]
@@ -319,6 +323,8 @@ def adim_closure_les(df, ref, mod, mesh, Cp):
         df["NUTURB_YY_DVDY"]
         - 1 / 3 * (df["NUTURB_XX_DUDX"] + df["NUTURB_YY_DVDY"] + df["NUTURB_ZZ_DWDZ"])
     )
+    out["uv_struct"] = df["STRUCTURAL_UW"]/df["RHO"]
+    out["uv_func"]   = - (df["NUTURB_XZ_DUDZ"] + df["NUTURB_XZ_DWDX"])
 
     out["u_theta_func"] = -2 * df["KAPPATURB_X_DSCALARDX"]
     out["u_theta_struct"] = +df["STRUCTURAL_USCALAR"] / (df["RHO"] * Cp)
@@ -340,6 +346,7 @@ def adim_closure_les(df, ref, mod, mesh, Cp):
         out2["urms_func"][side] /= ref.utau[side] * ref.utau[side]
         out2["vrms_func"][side] /= ref.utau[side] * ref.utau[side]
         out2["wrms_func"][side] /= ref.utau[side] * ref.utau[side]
+        out2["uv_func"][side] /= ref.utau[side] * ref.utau[side]
         out2["u_theta_func"][side] /= ref.utau[side] * ref.thetatau[side]
         out2["v_theta_func"][side] /= ref.utau[side] * ref.thetatau[side]
         out2["theta_rms_func"][side] /= ref.thetatau[side] * ref.thetatau[side]
@@ -348,6 +355,7 @@ def adim_closure_les(df, ref, mod, mesh, Cp):
         out2["urms_struct"][side] /= ref.utau[side] * ref.utau[side]
         out2["vrms_struct"][side] /= ref.utau[side] * ref.utau[side]
         out2["wrms_struct"][side] /= ref.utau[side] * ref.utau[side]
+        out2["uv_struct"][side] /= ref.utau[side] * ref.utau[side]
         out2["u_theta_struct"][side] /= ref.utau[side] * ref.thetatau[side]
         out2["v_theta_struct"][side] /= ref.utau[side] * ref.thetatau[side]
         out2["theta_rms_struct"][side] /= ref.thetatau[side] * ref.thetatau[side]
@@ -390,6 +398,7 @@ def adim_rms_dns(ref):
            + df["VV"] - df["V"] ** 2
            + df["WW"] - df["W"] ** 2)
     )
+    out["uv"] = df["UW"] - df["U"]*df["W"]
 
     out["u_theta"] = df["UT"] - df["U"] * df["T"]
 
@@ -407,6 +416,7 @@ def adim_rms_dns(ref):
         out2["urms"][side] /= ref.utau[side] * ref.utau[side]
         out2["vrms"][side] /= ref.utau[side] * ref.utau[side]
         out2["wrms"][side] /= ref.utau[side] * ref.utau[side]
+        out2["uv"][side] /= ref.utau[side] * ref.utau[side]
         out2["u_theta"][side] /= ref.utau[side] * ref.thetatau[side]
         out2["v_theta"][side] /= ref.utau[side] * ref.thetatau[side]
         out2["theta_rms"][side] /= ref.thetatau[side] * ref.thetatau[side]
