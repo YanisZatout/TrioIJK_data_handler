@@ -32,9 +32,7 @@ def ref_values(ref: pd.DataFrame, /, Cp, h, Tw) -> Tuple[Dict]:
 
     retau_temp = (utau_temp * h * ref["RHO"] / ref["MU"]).values
 
-    rho_bulk = rhobulk = np.trapz(ref["URHO"], ref.index) / np.trapz(
-        ref["U"], ref.index
-    )
+    rho_bulk = rhobulk = np.trapz(ref["RHO"], ref.index) / (2 * h)
     mu_bulk = mubulk = np.trapz(ref["MU"], ref.index) / (2 * h)
     u_bulk = ubulk = np.trapz(ref["URHO"], ref.index) / np.trapz(ref["RHO"], ref.index)
     t_bulk = np.trapz(ref["RHOUT_MOY"], ref.index) / np.trapz(
