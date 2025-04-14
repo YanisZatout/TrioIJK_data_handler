@@ -55,8 +55,8 @@ def ref_values(ref: pd.DataFrame, /, Cp, h, Tw) -> Tuple[Dict]:
     retau = {"hot": retau_temp[-1], "cold": retau_temp[0]}
     thetatau = {"hot": thetatau_temp[-1], "cold": thetatau_temp[0]}
 
-    nusselt_hot_temp  = 4*h*ref["LAMBDADTDZ"].iloc[-1] / (ref["LAMBDA"].iloc[-1] * (t_bulk - Tw_hot))
-    nusselt_cold_temp = 4*h*ref["LAMBDADTDZ"].iloc[0 ] / (ref["LAMBDA"].iloc[0 ] * (t_bulk - Tw_cold))
+    nusselt_hot_temp  = np.abs(4*h*ref["LAMBDADTDZ"].iloc[-1] / (ref["LAMBDA"].iloc[-1] * (t_bulk - Tw_hot)))
+    nusselt_cold_temp = np.abs(4*h*ref["LAMBDADTDZ"].iloc[0 ] / (ref["LAMBDA"].iloc[0 ] * (t_bulk - Tw_cold)))
 
     nusselt = {"hot": nusselt_hot_temp, "cold": nusselt_cold_temp}
 
