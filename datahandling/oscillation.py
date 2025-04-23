@@ -35,40 +35,50 @@ def ref_values(ref: pd.DataFrame, /, Cp, h, Tw) -> Tuple[Dict]:
     rho_bulk = rhobulk = np.trapz(ref["RHO"], ref.index) / (2 * h)
     mu_bulk = mubulk = np.trapz(ref["MU"], ref.index) / (2 * h)
     u_bulk = ubulk = np.trapz(ref["URHO"], ref.index) / np.trapz(ref["RHO"], ref.index)
-    t_bulk = np.trapz(ref["RHOUT_MOY"], ref.index) / np.trapz(
-        ref["URHO"], ref.index
-    )
+    t_bulk = np.trapz(ref["RHOUT_MOY"], ref.index) / np.trapz(ref["URHO"], ref.index)
     re_bulk = ubulk * h * rhobulk / mubulk
 
     Tw_hot = Tw["hot"]
     Tw_cold = Tw["cold"]
 
-    theta_hot_temp  = (ref["T"].values[::-1][:middle] - Tw_hot ) / (t_bulk - Tw_hot)
+    theta_hot_temp = (ref["T"].values[::-1][:middle] - Tw_hot) / (t_bulk - Tw_hot)
     theta_cold_temp = (ref["T"].values[:middle] - Tw_cold) / (t_bulk - Tw_cold)
     theta = {"hot": theta_hot_temp, "cold": theta_cold_temp}
 
-    thetatau_temp = (
-        ref["LAMBDADTDZ"] / (ref["RHO"] * Cp * utau_temp)
-    ).values
+    thetatau_temp = (ref["LAMBDADTDZ"] / (ref["RHO"] * Cp * utau_temp)).values
     phi_tau = {"hot": thetatau_temp[-1], "cold": thetatau_temp[0]}
 
     retau = {"hot": retau_temp[-1], "cold": retau_temp[0]}
     thetatau = {"hot": thetatau_temp[-1], "cold": thetatau_temp[0]}
 
-    nusselt_hot_temp  = np.abs(4*h*ref["LAMBDADTDZ"].iloc[-1] / (ref["LAMBDA"].iloc[-1] * (t_bulk - Tw_hot)))
-    nusselt_cold_temp = np.abs(4*h*ref["LAMBDADTDZ"].iloc[0 ] / (ref["LAMBDA"].iloc[0 ] * (t_bulk - Tw_cold)))
+    nusselt_hot_temp = np.abs(
+        4
+        * h
+        * ref["LAMBDADTDZ"].iloc[-1]
+        / (ref["LAMBDA"].iloc[-1] * (t_bulk - Tw_hot))
+    )
+    nusselt_cold_temp = np.abs(
+        4 * h * ref["LAMBDADTDZ"].iloc[0] / (ref["LAMBDA"].iloc[0] * (t_bulk - Tw_cold))
+    )
 
     nusselt = {"hot": nusselt_hot_temp, "cold": nusselt_cold_temp}
 
-    Cf_hot_temp  = (
-        2 * ref["MU"].values[hot ] / (rhobulk * ubulk**2) * np.gradient(ref["U"].values[::-1][:4], ref.index.values[::-1][:4], edge_order=2)[0]
+    Cf_hot_temp = (
+        2
+        * ref["MU"].values[hot]
+        / (rhobulk * ubulk**2)
+        * np.gradient(
+            ref["U"].values[::-1][:4], ref.index.values[::-1][:4], edge_order=2
+        )[0]
     )
     Cf_cold_temp = (
-        2 * ref["MU"].values[cold] / (rhobulk * ubulk**2) * np.gradient(ref["U"].values      [:4], ref.index.values[:4 ],      edge_order=2)[0]
+        2
+        * ref["MU"].values[cold]
+        / (rhobulk * ubulk**2)
+        * np.gradient(ref["U"].values[:4], ref.index.values[:4], edge_order=2)[0]
     )
 
     Cf = {"hot": Cf_hot_temp, "cold": Cf_cold_temp}
-
 
     return (
         h,
@@ -88,12 +98,19 @@ def ref_values(ref: pd.DataFrame, /, Cp, h, Tw) -> Tuple[Dict]:
         yplus,
         ref,
         mu_bulk,
-        phi_tau
+        phi_tau,
     )
 
 
 class RefData(object):
-    def __init__(self, path: str, /, Cp: float=0, h: float=0, Tw:Dict[str, float]={"hot": 293, "cold": 586}) -> None:
+    def __init__(
+        self,
+        path: str,
+        /,
+        Cp: float = 0,
+        h: float = 0,
+        Tw: Dict[str, float] = {"hot": 293, "cold": 586},
+    ) -> None:
         assert Cp != 0, "Cp must be provided as a floating point value"
         assert h != 0, "h must be provided as a floating point value"
         self.path = path
@@ -150,57 +167,86 @@ class RefData(object):
         self.middle = len(self.y) // 2
         self.Nusselt = self.Nu = self.nusselt
         self.ny = self.y.shape[0]
+
     def __repr__(self):
-        return f"bulk quantities {self.bulk}\n"\
-            f"sheer quantities {self.sheer}\n"\
+        return (
+            f"bulk quantities {self.bulk}\n"
+            f"sheer quantities {self.sheer}\n"
             f"wall quantities {self.wall}\n"
+        )
 
 
-
-def osc_post_treat(df: pd.DataFrame, ref: Ref) -> Tuple[Union[npt.ArrayLike, pd.DataFrame]]:
-    theta_hot = [
-        ((d["T"] - ref.Tw["hot"]) / (ref.t_bulk - ref.Tw["hot"])) for d in df
-    ]
+def osc_post_treat(df, ref) -> Tuple[Union[npt.ArrayLike, pd.DataFrame]]:
+    Tw = ref.Tw
+    Tw_hot = Tw["hot"]
+    Tw_cold = Tw["cold"]
+    times = [d.index.get_level_values(0).unique() for d in df]
+    t_plus = tplus = [t * (ref.retau["hot"] * ref.utau["hot"]) / ref.h for t in times]
+    theta_hot = [((d["T"] - ref.Tw["hot"]) / (ref.t_bulk - ref.Tw["hot"])) for d in df]
 
     theta_cold = [
         ((d["T"] - ref.Tw["cold"]) / (ref.t_bulk - ref.Tw["cold"])) for d in df
     ]
     theta = {"hot": theta_hot, "cold": theta_cold}
-
+    y = [dataframe.index.get_level_values(1).unique() for dataframe in df]
+    h = ref.h
+    tb = [
+        dataframe["RHOUT_MOY"].groupby("time").apply(lambda x: np.trapezoid(x, yy))
+        / dataframe["URHO"].groupby("time").apply(lambda x: np.trapezoid(x, yy))
+        for dataframe, yy in zip(df, y)
+    ]
+    rb = [
+        dataframe["URHO"].groupby("time").apply(lambda x: np.trapezoid(x, yy))
+        / dataframe["U"].groupby("time").apply(lambda x: np.trapezoid(x, yy))
+        for dataframe, yy in zip(df, y)
+    ]
+    ub = [
+        dataframe["U"].groupby("time").apply(lambda x: np.trapezoid(x, yy)) / (2 * h)
+        for dataframe, yy in zip(df, y)
+    ]
     Nu_hot = [
-        2
-        * t.groupby("time").apply(
-            lambda x: np.gradient(x.values[::-1][:4], ref.yplus["hot"][:4], edge_order=2)[0]
+        np.abs(
+            4
+            * h
+            * dataframe["LAMBDADTDZ"].groupby("time").apply(lambda x: x.iloc[-1])
+            / (
+                dataframe["LAMBDA"].groupby("time").apply(lambda x: x.iloc[-1])
+                * (tbulk - Tw_hot)
+            )
         )
-        for t in theta_hot
+        for dataframe, tbulk in zip(df, tb)
     ]
     Nu_cold = [
-        2
-        * t.groupby("time").apply(
-            lambda x: np.gradient(x[:4], ref.yplus["cold"][:4], edge_order=2)[0]
+        np.abs(
+            4
+            * h
+            * dataframe["LAMBDADTDZ"].groupby("time").apply(lambda x: x.iloc[0])
+            / (
+                dataframe["LAMBDA"].groupby("time").apply(lambda x: x.iloc[0])
+                * (tbulk - Tw_cold)
+            )
         )
-        for t in theta_cold
+        for dataframe, tbulk in zip(df, tb)
     ]
 
-    Nu_hot_norm = [nu / ref.nusselt["hot"] for nu in Nu_hot]
-    Nu_cold_norm = [nu / ref.nusselt["cold"] for nu in Nu_cold]
+    Nu_hot_norm = [nu / nu.iloc[0] for nu in Nu_hot]
+    Nu_cold_norm = [nu / nu.iloc[0] for nu in Nu_cold]
 
     Nu = {"hot": Nu_hot, "cold": Nu_cold}
     Nu_norm = {"hot": Nu_hot_norm, "cold": Nu_cold_norm}
 
-    times = [d.index.get_level_values(0).unique() for d in df]
-    t_plus = tplus = [t * (ref.retau["hot"] * ref.utau["hot"]) / ref.h for t in times]
-    # mintimes = np.array([t[0] for t in tplus])
-    # mintime = np.min(mintimes)
     tplus = t_plus = [t - t[0] for t in tplus]
 
     Cf_act_hot = [
-        2 * d["MU"].groupby("time").apply(lambda x: x.iloc[-1])
+        2
+        * d["MU"].groupby("time").apply(lambda x: x.iloc[-1])
         * d["U"]
         .groupby("time")
-        .apply(lambda x: np.gradient(x.values[::-1][:4], ref.y[::-1][:4], edge_order=2)[0])
-        / (ref.rho_bulk * (ref.u_bulk**2))
-        for d in df
+        .apply(
+            lambda x: np.gradient(x.values[::-1][:4], ref.y[::-1][:4], edge_order=2)[0]
+        )
+        / (rho_bulk * (u_bulk**2))
+        for d, rho_bulk, u_bulk in zip(df, rb, ub)
     ]
     Cf_act_cold = [
         2
@@ -208,12 +254,12 @@ def osc_post_treat(df: pd.DataFrame, ref: Ref) -> Tuple[Union[npt.ArrayLike, pd.
         * d["U"]
         .groupby("time")
         .apply(lambda x: np.gradient(x.values[:4], ref.y[:4], edge_order=2)[0])
-        / (ref.rho_bulk * (ref.u_bulk**2))
-        for d in df
+        / (rho_bulk * (u_bulk**2))
+        for d, rho_bulk, u_bulk in zip(df, rb, ub)
     ]
 
-    Cf_act_norm_hot = [cf / ref.Cf["hot"] for cf in Cf_act_hot]
-    Cf_act_norm_cold = [cf / ref.Cf["cold"] for cf in Cf_act_cold]
+    Cf_act_norm_hot = [cf / cf.iloc[0] for cf in Cf_act_hot]
+    Cf_act_norm_cold = [cf / cf.iloc[0] for cf in Cf_act_cold]
     Cf_act = {"hot": Cf_act_hot, "cold": Cf_act_cold}
     Cf_act_norm = {"hot": Cf_act_norm_hot, "cold": Cf_act_norm_cold}
 
