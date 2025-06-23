@@ -110,6 +110,43 @@ def adim_mean_les(df, ref, mod, mesh):
         "cold": (df["W"] / ref.utau["cold"]).values[: ref.middle],
     }
 
+    coef_uscalar_model = 1
+
+    out["U_mod"] = {"hot": np.copy(out["U"]["hot"]), "cold": np.copy(out["U"]["cold"])}
+    out["U_mod"]["hot"] += (
+        (
+            -1 * df["KAPPATURB_X_DSCALARDX"] * df["RHO"]
+            +1 * df["STRUCTURAL_USCALAR"] / ref.Cp / coef_uscalar_model
+        )
+        / ref.utau["hot"]
+    ).values[::-1][: ref.middle]
+
+    out["U_mod"]["cold"] += (
+        (
+            -1 * df["KAPPATURB_X_DSCALARDX"] * df["RHO"]
+            +1 * df["STRUCTURAL_USCALAR"] / ref.Cp / coef_uscalar_model
+        )
+        / ref.utau["cold"]
+    ).values[: ref.middle]
+
+    # \langle V \rangle = \langle \widetilde{V} + \overline{\rho}G_{\widetilde{V}/\overline{\rho}} \rangle
+    out["V_mod"] = {"hot": np.copy(out["V"]["hot"]), "cold": np.copy(out["V"]["cold"])}
+    out["V_mod"]["hot"] += (
+        (
+            -1 * df["KAPPATURB_Z_DSCALARDZ"] * df["RHO"]
+            -1 * df["STRUCTURAL_WSCALAR"] / ref.Cp / coef_uscalar_model
+        )
+        / ref.utau["hot"]
+    ).values[::-1][: ref.middle]
+
+    out["V_mod"]["cold"] += (
+        (
+            -1 * df["KAPPATURB_Z_DSCALARDZ"] * df["RHO"]
+            -1 * df["STRUCTURAL_WSCALAR"] / ref.Cp / coef_uscalar_model
+        )
+        / ref.utau["cold"]
+    ).values[: ref.middle]
+
     out["Nu"] = {
         "hot": 2 * np.gradient(out["T"]["hot"], ref.yplus["hot"], edge_order=2),
         "cold": 2 * np.gradient(out["T"]["cold"], ref.yplus["cold"], edge_order=2),
@@ -238,7 +275,8 @@ def adim_rms_les(df, ref, mod, mesh, Cp):
     )
     out["wrms"] += (
         +df["STRUCTURAL_VV"] / df["RHO"]
-        - 1 / 3
+        - 1
+        / 3
         * (df["STRUCTURAL_UU"] + df["STRUCTURAL_VV"] + df["STRUCTURAL_WW"])
         / df["RHO"]
     )
@@ -248,16 +286,16 @@ def adim_rms_les(df, ref, mod, mesh, Cp):
     )
 
     out["uv"] = df["UW"] - df["U"] * df["W"]
-    out["uv"] += df["STRUCTURAL_UW"]/df["RHO"]
-    out["uv"] += - (df["NUTURB_XZ_DUDZ"] + df["NUTURB_XZ_DWDX"])
+    out["uv"] += df["STRUCTURAL_UW"] / df["RHO"]
+    out["uv"] += -(df["NUTURB_XZ_DUDZ"] + df["NUTURB_XZ_DWDX"])
 
     out["u_theta"] = df["UT"] - df["U"] * df["T"]
-    out["u_theta"] += -2 * df["KAPPATURB_X_DSCALARDX"] + df["STRUCTURAL_USCALAR"] / (
+    out["u_theta"] += -1 * df["KAPPATURB_X_DSCALARDX"] + df["STRUCTURAL_USCALAR"] / (
         df["RHO"] * Cp
     )
 
     out["v_theta"] = df["WT"] - df["W"] * df["T"]
-    out["v_theta"] += -2 * df["KAPPATURB_Z_DSCALARDZ"] + df["STRUCTURAL_WSCALAR"] / (
+    out["v_theta"] += -1 * df["KAPPATURB_Z_DSCALARDZ"] + df["STRUCTURAL_WSCALAR"] / (
         df["RHO"] * Cp
     )
 
@@ -274,7 +312,7 @@ def adim_rms_les(df, ref, mod, mesh, Cp):
         out2["urms"][side] /= ref.utau[side] * ref.utau[side]
         out2["vrms"][side] /= ref.utau[side] * ref.utau[side]
         out2["wrms"][side] /= ref.utau[side] * ref.utau[side]
-        out2["uv"][side]   /= ref.utau[side] * ref.utau[side]
+        out2["uv"][side] /= ref.utau[side] * ref.utau[side]
         out2["u_theta"][side] /= ref.utau[side] * ref.thetatau[side]
         out2["v_theta"][side] /= ref.utau[side] * ref.thetatau[side]
         out2["theta_rms"][side] /= ref.thetatau[side] * ref.thetatau[side]
@@ -323,8 +361,8 @@ def adim_closure_les(df, ref, mod, mesh, Cp):
         df["NUTURB_YY_DVDY"]
         - 1 / 3 * (df["NUTURB_XX_DUDX"] + df["NUTURB_YY_DVDY"] + df["NUTURB_ZZ_DWDZ"])
     )
-    out["uv_struct"] = df["STRUCTURAL_UW"]/df["RHO"]
-    out["uv_func"]   = - (df["NUTURB_XZ_DUDZ"] + df["NUTURB_XZ_DWDX"])
+    out["uv_struct"] = df["STRUCTURAL_UW"] / df["RHO"]
+    out["uv_func"] = -(df["NUTURB_XZ_DUDZ"] + df["NUTURB_XZ_DWDX"])
 
     out["u_theta_func"] = -2 * df["KAPPATURB_X_DSCALARDX"]
     out["u_theta_struct"] = +df["STRUCTURAL_USCALAR"] / (df["RHO"] * Cp)
@@ -374,9 +412,7 @@ def adim_rms_dns(ref):
         - df["U"] ** 2
         - 1
         / 3
-        * (df["UU"] - df["U"] ** 2
-           + df["VV"] - df["V"] ** 2
-           + df["WW"] - df["W"] ** 2)
+        * (df["UU"] - df["U"] ** 2 + df["VV"] - df["V"] ** 2 + df["WW"] - df["W"] ** 2)
     )
 
     out["vrms"] = (
@@ -384,9 +420,7 @@ def adim_rms_dns(ref):
         - df["W"] ** 2
         - 1
         / 3
-        * (df["UU"] - df["U"] ** 2
-           + df["VV"] - df["V"] ** 2
-           + df["WW"] - df["W"] ** 2)
+        * (df["UU"] - df["U"] ** 2 + df["VV"] - df["V"] ** 2 + df["WW"] - df["W"] ** 2)
     )
 
     out["wrms"] = (
@@ -394,11 +428,9 @@ def adim_rms_dns(ref):
         - df["V"] ** 2
         - 1
         / 3
-        * (df["UU"] - df["U"] ** 2
-           + df["VV"] - df["V"] ** 2
-           + df["WW"] - df["W"] ** 2)
+        * (df["UU"] - df["U"] ** 2 + df["VV"] - df["V"] ** 2 + df["WW"] - df["W"] ** 2)
     )
-    out["uv"] = df["UW"] - df["U"]*df["W"]
+    out["uv"] = df["UW"] - df["U"] * df["W"]
 
     out["u_theta"] = df["UT"] - df["U"] * df["T"]
 
@@ -463,9 +495,9 @@ def weighted_convolution(x, coord_face, size):
     cell_size = np.diff(coord_face[-1])
     cell_size = np.pad(cell_size, (sz // 2, sz // 2), "edge")
     for k in range(x.shape[-1]):
-        kernel = cell_size[k:k+sz] / cell_size[k:k+sz].sum()
-        out[..., k:k+1] = si.convolve(
-            padded[..., k:k+sz], kernel[None, None], "valid"
+        kernel = cell_size[k : k + sz] / cell_size[k : k + sz].sum()
+        out[..., k : k + 1] = si.convolve(
+            padded[..., k : k + sz], kernel[None, None], "valid"
         )
     return out
 
@@ -486,6 +518,7 @@ def compute_eps_quantity_side(
     quantity, les, dns, ref_les, ref_dns, model, mesh, Cp, side
 ):
     from scipy.interpolate import CubicSpline
+
     les = les[quantity][side]
     dns = dns[quantity][side]
     ref_les = ref_les[model][mesh]
@@ -497,35 +530,19 @@ def compute_eps_quantity_side(
     outspline = spline(yplus_les)
     y_face = ref_les.y
     yplus_les_face = adim_y_face(y_face, ref_les)[side]
-    logy_les = np.log(yplus_les_face[1:]/yplus_les_face[:-1])[:ref_les.middle]
+    logy_les = np.log(yplus_les_face[1:] / yplus_les_face[:-1])[: ref_les.middle]
 
-    diff = (les - outspline)
+    diff = les - outspline
     out = logy_les * np.abs(diff * les)
 
     denom = logy_les * outspline**2
-    out = out.sum()/denom.sum()
+    out = out.sum() / denom.sum()
     return out
 
 
 def compute_eps(quantity, les, dns, ref_les, ref_dns, model, mesh, Cp):
     return compute_eps_quantity_side(
-            quantity,
-            les,
-            dns,
-            ref_les,
-            ref_dns,
-            model,
-            mesh,
-            Cp,
-            "hot"
-        ) + compute_eps_quantity_side(
-                quantity,
-                les,
-                dns,
-                ref_les,
-                ref_dns,
-                model,
-                mesh,
-                Cp,
-                "cold"
-        )
+        quantity, les, dns, ref_les, ref_dns, model, mesh, Cp, "hot"
+    ) + compute_eps_quantity_side(
+        quantity, les, dns, ref_les, ref_dns, model, mesh, Cp, "cold"
+    )
