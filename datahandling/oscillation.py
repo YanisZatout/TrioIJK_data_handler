@@ -1,7 +1,11 @@
 from typing import Tuple, Dict, Type, Union
+from weakref import ref
 import numpy as np
 from scipy.interpolate import CubicSpline, RegularGridInterpolator
+
+from datahandling.dns import ttau_semilocal
 from .dataloader import DataLoaderPandas
+from .dns import utau_semilocal, y_semilocal, retau_semilocal, bulk, cf, nu
 import pandas as pd
 from numpy import typing as npt
 
@@ -13,8 +17,6 @@ def ref_values(ref: pd.DataFrame, /, Cp, h, Tw) -> Tuple[Dict]:
         raise ValueError(f"Tw must be a dict. A {type(Tw)} was given")
     hot = -1
     cold = 0
-
-    # ref = DataLoaderPandas(path, "statistiques").load_last()
 
     utau_temp = np.sqrt(
         ref["MU"] / ref["RHO"] * np.abs(np.gradient(ref["U"], ref.index, edge_order=2))
@@ -33,9 +35,12 @@ def ref_values(ref: pd.DataFrame, /, Cp, h, Tw) -> Tuple[Dict]:
     retau_temp = (utau_temp * h * ref["RHO"] / ref["MU"]).values
 
     rho_bulk = rhobulk = np.trapz(ref["RHO"], ref.index) / (2 * h)
+    rho_m = rhom = rho_bulk
     mu_bulk = mubulk = np.trapz(ref["MU"], ref.index) / (2 * h)
     u_bulk = ubulk = np.trapz(ref["URHO"], ref.index) / np.trapz(ref["RHO"], ref.index)
+    u_m = um = np.trapz(ref["U"], ref.index) / (2 * h)
     t_bulk = np.trapz(ref["RHOUT_MOY"], ref.index) / np.trapz(ref["URHO"], ref.index)
+    t_m = tm = np.trapz(ref["T"], ref.index) / (2 * h)
     re_bulk = ubulk * h * rhobulk / mubulk
 
     Tw_hot = Tw["hot"]
@@ -66,7 +71,7 @@ def ref_values(ref: pd.DataFrame, /, Cp, h, Tw) -> Tuple[Dict]:
     Cf_hot_temp = (
         2
         * ref["MU"].values[hot]
-        / (rhobulk * ubulk**2)
+        / (rho_m * u_m**2)
         * np.gradient(
             ref["U"].values[::-1][:4], ref.index.values[::-1][:4], edge_order=2
         )[0]
@@ -74,7 +79,7 @@ def ref_values(ref: pd.DataFrame, /, Cp, h, Tw) -> Tuple[Dict]:
     Cf_cold_temp = (
         2
         * ref["MU"].values[cold]
-        / (rhobulk * ubulk**2)
+        / (rho_m * u_m**2)
         * np.gradient(ref["U"].values[:4], ref.index.values[:4], edge_order=2)[0]
     )
 
@@ -109,10 +114,13 @@ class RefData(object):
         /,
         Cp: float = 0,
         h: float = 0,
-        Tw: Dict[str, float] = {"hot": 293, "cold": 586},
+        Tw: Dict[str, float] = dict(list([])),
     ) -> None:
         assert Cp != 0, "Cp must be provided as a floating point value"
         assert h != 0, "h must be provided as a floating point value"
+        assert Tw != dict(
+            list([])
+        ), "You must provide the boundary temperatures as a dict of floating point values"
         self.path = path
         self.Cp = self.cp = Cp
         self.h = h
@@ -124,49 +132,17 @@ class RefData(object):
         if not Cp:
             Cp = self.Cp
         ref_df = DataLoaderPandas(path, "statistiques").load_last()
-        (
-            _,
-            self.utau,
-            self.thetatau,
-            self.retau,
-            self.rho_bulk,
-            self.u_bulk,
-            self.t_bulk,
-            self.re_bulk,
-            self.theta,
-            self.utau,
-            self.retau,
-            self.nusselt,
-            self.Cf,
-            self.y,
-            self.yplus,
-            self.df,
-            self.mu_bulk,
-            self.phi_tau,
-        ) = ref_values(ref_df, self.Cp, h=self.h, Tw=self.Tw)
-        self.ubulk = self.u_bulk
-        self.rebulk = self.re_bulk
-
-        self.wall = {"T": self.Tw}
-        self.sheer = self.tau = {
+        self.df = ref_df
+        self.y = y = self.df.index.values
+        self.middle = len(y) // 2
+        self.ref_values()
+        self.sheer = {
             "utau": self.utau,
             "retau": self.retau,
             "Cf": self.Cf,
-            "thetatau": self.thetatau,
-            "phitau": self.phi_tau,
+            "ttau": self.ttau,
         }
-        self.msh = {"y": self.y, "h": self.h}
-        self.T = self.thermal = {"Nu": self.nusselt, "nusselt": self.nusselt}
-        self.bulk = {
-            "rho_bulk": self.rho_bulk,
-            "u_bulk": self.u_bulk,
-            "t_bulk": self.t_bulk,
-            "re_bulk": self.re_bulk,
-            "mu_bulk": self.mu_bulk,
-        }
-        self.middle = len(self.y) // 2
-        self.Nusselt = self.Nu = self.nusselt
-        self.ny = self.y.shape[0]
+        self.wall = {"T": self.Tw}
 
     def __repr__(self):
         return (
@@ -174,6 +150,19 @@ class RefData(object):
             f"sheer quantities {self.sheer}\n"
             f"wall quantities {self.wall}\n"
         )
+
+    def ref_values(self) -> None:
+        self.utau_star = utau_semilocal(self)
+        self.utau = {"hot": self.utau_star["hot"][0], "cold": self.utau_star["cold"][0]}
+        self.y_star = y_semilocal(self)
+        self.retau_star = retau_semilocal(self)
+        self.retau = {"hot": self.retau_star["hot"][0], "cold": self.retau_star["cold"][0]}
+        self.ttau_star = ttau_semilocal(self)
+        self.ttau = {"hot": self.ttau_star["hot"][0], "cold": self.ttau_star["cold"][0]}
+        self.Cf = self.cf = cf(self)
+        self.Nu = self.nu = nu(self)
+        self.bulk = bulk(self)
+        return
 
 
 def osc_post_treat(df, ref) -> Tuple[Union[npt.ArrayLike, pd.DataFrame]]:
