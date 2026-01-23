@@ -156,12 +156,19 @@ class RefData(object):
         self.utau = {"hot": self.utau_star["hot"][0], "cold": self.utau_star["cold"][0]}
         self.y_star = y_semilocal(self)
         self.retau_star = retau_semilocal(self)
-        self.retau = {"hot": self.retau_star["hot"][0], "cold": self.retau_star["cold"][0]}
+        self.retau = {
+            "hot": self.retau_star["hot"][0],
+            "cold": self.retau_star["cold"][0],
+        }
         self.ttau_star = ttau_semilocal(self)
         self.ttau = {"hot": self.ttau_star["hot"][0], "cold": self.ttau_star["cold"][0]}
         self.Cf = self.cf = cf(self)
         self.Nu = self.nu = nu(self)
         self.bulk = bulk(self)
+        df = self.df
+        gamma = 1.4
+        r_air = self.Cp * (1-1/gamma)
+        self.p0 = self.P0 = (df["T"]*df["RHO"]*r_air).iloc[-1]
         return
 
 
