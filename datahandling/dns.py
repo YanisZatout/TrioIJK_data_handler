@@ -62,14 +62,15 @@ def y_semilocal(ref: Ref) -> Dict[str, float]:
 def cf(ref: Ref) -> Dict[str, float]:
     _bulk = bulk(ref)
     df = ref.df
+    h = ref.h
     u = ref.df["U"].values
     y = ref.y
     mu = df.MU.values
     rhobulk = _bulk["rho"]
     ubulk = _bulk["u"]
 
-    cold = 2 * mu[0] * (u[0] / y[0]) / (rhobulk * ubulk)
-    hot = 2 * mu[-1] * (u[-1] / y[0]) / (rhobulk * ubulk)
+    cold = 2 * mu[0] * (u[0] / y[0]) / (rhobulk * ubulk**2)
+    hot = 2 * mu[-1] * (u[-1] / (2*h - y[-1])) / (rhobulk * ubulk**2)
 
     return {"hot": hot, "cold": cold}
 
