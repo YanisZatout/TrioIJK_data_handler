@@ -125,6 +125,8 @@ class RefData(object):
         self.Cp = self.cp = Cp
         self.h = h
         self.Tw = self.tw = Tw
+        self.gamma = 1.4
+        self.r_air = self.Cp * (1 - 1 / self.gamma)
 
     def load(self, path=None, Cp=None):
         if not path:
@@ -136,8 +138,6 @@ class RefData(object):
         self.y = y = self.df.index.values
         self.middle = len(y) // 2
         self.ref_values()
-        self.gamma = gamma = 1.4
-        self.r_air = self.Cp * (1 - 1 / gamma)
         self.sheer = {
             "utau": self.utau,
             "retau": self.retau,
