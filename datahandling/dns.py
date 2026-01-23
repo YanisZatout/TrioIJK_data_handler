@@ -25,11 +25,7 @@ def utau_semilocal(ref: Ref) -> Dict[str, float]:
 
 def ttau_semilocal(ref: Ref) -> Dict[str, float]:
     df = ref.df
-    u = df.U.values
-    mu = df.MU.values
     rho = df.RHO.values
-    h = ref.h
-    y = ref.y
     middle = ref.middle
     utau = utau_semilocal(ref)
     ldtdz = df.LAMBDADTDZ.values
@@ -78,29 +74,25 @@ def cf(ref: Ref) -> Dict[str, float]:
 def nu(ref: Ref) -> Dict[str, float]:
     _bulk = bulk(ref)
     df = ref.df
-    u = ref.df["U"].values
-    y = ref.y
     h = ref.h
     tw = ref.tw
     tbulk = _bulk["t"]
 
-    ldtdz = df.LAMBDADTDZ.values
-    l = df.LAMBDA.values
+    lbdadtdz = df.LAMBDADTDZ.values
+    lbda = df.LAMBDA.values
 
-    cold = 4 * h * ldtdz[0] / (l[0] * np.abs(tbulk - tw["cold"]))
-    hot = 4 * h * ldtdz[-1] / (l[-1] * np.abs(tbulk - tw["hot"]))
+    cold = 4 * h * lbdadtdz[0] / (lbda[0] * np.abs(tbulk - tw["cold"]))
+    hot = 4 * h * lbdadtdz[-1] / (lbda[-1] * np.abs(tbulk - tw["hot"]))
 
     return {"hot": hot, "cold": cold}
 
 
 def retau_semilocal(ref: Ref) -> Dict[str, float]:
     df = ref.df
-    u = df.U.values
     mu = df.MU.values
     rho = df.RHO.values
     nu = mu / rho
     h = ref.h
-    y = ref.y
     middle = ref.middle
 
     utau = utau_semilocal(ref)
