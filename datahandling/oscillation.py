@@ -136,6 +136,8 @@ class RefData(object):
         self.y = y = self.df.index.values
         self.middle = len(y) // 2
         self.ref_values()
+        self.gamma = gamma = 1.4
+        self.r_air = self.Cp * (1 - 1 / gamma)
         self.sheer = {
             "utau": self.utau,
             "retau": self.retau,
@@ -166,9 +168,8 @@ class RefData(object):
         self.Nu = self.nu = nu(self)
         self.bulk = bulk(self)
         df = self.df
-        gamma = 1.4
-        r_air = self.Cp * (1-1/gamma)
-        self.p0 = self.P0 = (df["T"]*df["RHO"]*r_air).iloc[-1]
+        r_air = self.r_air
+        self.p0 = self.P0 = (df["T"] * df["RHO"] * r_air).iloc[-1]
         return
 
 

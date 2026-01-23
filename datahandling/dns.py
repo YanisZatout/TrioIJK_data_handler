@@ -120,6 +120,8 @@ def bulk(ref: Ref) -> Dict[str, float]:
     df = ref.df
     h = ref.h
     y = ref.y
+    gamma = ref.gamma
+    r_air = ref.r_air
     rho = df.RHO.values
     rhobulk = np.trapz(rho, y) / (2 * h)
 
@@ -138,6 +140,7 @@ def bulk(ref: Ref) -> Dict[str, float]:
     tbulk = np.trapz(rhout, y) / np.trapz(rhou, y)
     tbulk = np.trapz(rhout, y) / np.trapz(rhou, y)
     rebulk = ubulk * ref.h * rhobulk / mubulk
+    mach = np.sqrt(gamma * r_air * tbulk)
     return {
         "rho": rhobulk,
         "u": ubulk,
@@ -146,4 +149,5 @@ def bulk(ref: Ref) -> Dict[str, float]:
         "mu": mubulk,
         "um": um,
         "tm": tm,
+        "mach": mach,
     }
