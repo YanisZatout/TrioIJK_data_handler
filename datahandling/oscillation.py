@@ -1,5 +1,4 @@
 from typing import Tuple, Dict, Type, Union
-from weakref import ref
 import numpy as np
 from scipy.interpolate import CubicSpline, RegularGridInterpolator
 
@@ -30,7 +29,7 @@ def ref_values(ref: pd.DataFrame, /, Cp, h, Tw) -> Tuple[Dict]:
     y_plus_hot = (2 * h - y[middle:])[::-1] * utau["hot"] / ref["NU"].iloc[hot]
     y_plus_cold = y[:middle] * utau["cold"] / ref["NU"].iloc[cold]
 
-    y_plus = yplus = {"hot": y_plus_hot, "cold": y_plus_cold}
+    yplus = {"hot": y_plus_hot, "cold": y_plus_cold}
 
     retau_temp = (utau_temp * h * ref["RHO"] / ref["MU"]).values
 
