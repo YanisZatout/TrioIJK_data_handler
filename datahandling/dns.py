@@ -1,6 +1,7 @@
 """ from .oscillation import Ref, RefData """
 from typing import Dict, Type
 import numpy as np
+from scipy.integrate import cumulative_trapezoid
 
 
 Ref = Type["RefData"]
@@ -23,6 +24,56 @@ def utau_semilocal(ref: Ref) -> Dict[str, float]:
     return {"cold": utau_cold, "hot": utau_hot}
 
 
+def trettel_larson(ref):
+    df = ref.df
+    y = ref.y
+    h = ref.h
+    middle = ref.middle
+
+    u = df.U.values
+    mu = df.MU.values
+    rho = df.RHO.values
+
+    rho_w_c = rho[0]
+    tau_w_c = mu[0] * u[0] / y[0]
+    utau_c = np.sqrt(tau_w_c / rho_w_c)
+
+    y_c = y[:middle]
+    u_c = u[:middle]
+    rho_c = rho[:middle]
+    mu_c = mu[:middle]
+
+    drho_dy_c = np.gradient(rho_c, y_c, edge_order=2)
+    dmu_dy_c = np.gradient(mu_c, y_c, edge_order=2)
+
+    kernel_c = np.sqrt(rho_c / rho_w_c) * (
+        1 + 0.5 * (y_c / rho_c) * drho_dy_c - (y_c / mu_c) * dmu_dy_c
+    )
+
+    utl_c = cumulative_trapezoid(kernel_c, x=u_c, initial=0) / utau_c
+
+    rho_w_h = rho[-1]
+    dist_h = 2 * h - y
+    tau_w_h = mu[-1] * u[-1] / dist_h[-1]
+    utau_h = np.sqrt(tau_w_h / rho_w_h)
+
+    u_h = u[::-1][:middle]
+    rho_h = rho[::-1][:middle]
+    mu_h = mu[::-1][:middle]
+    dist_h_local = dist_h[::-1][:middle]
+
+    drho_dy_h = np.gradient(rho_h, dist_h_local, edge_order=2)
+    dmu_dy_h = np.gradient(mu_h, dist_h_local, edge_order=2)
+
+    kernel_h = np.sqrt(rho_h / rho_w_h) * (
+        1 + 0.5 * (dist_h_local / rho_h) * drho_dy_h - (dist_h_local / mu_h) * dmu_dy_h
+    )
+
+    utl_h = cumulative_trapezoid(kernel_h, x=u_h, initial=0) / utau_h
+
+    return {"cold": utl_c, "hot": utl_h}
+
+
 def ttau_semilocal(ref: Ref) -> Dict[str, float]:
     df = ref.df
     rho = df.RHO.values
@@ -31,8 +82,8 @@ def ttau_semilocal(ref: Ref) -> Dict[str, float]:
     ldtdz = df.LAMBDADTDZ.values
     cp = ref.Cp
 
-    cold = ldtdz[:middle] / (rho[:middle] * cp * utau["cold"])
-    hot = ldtdz[::-1][:middle] / (rho[::-1][:middle] * cp * utau["hot"])
+    cold = np.abs(ldtdz[:middle]) / (rho[:middle] * cp * utau["cold"])
+    hot = np.abs(ldtdz[::-1][:middle]) / (rho[::-1][:middle] * cp * utau["hot"])
 
     return {"hot": hot, "cold": cold}
 
@@ -66,7 +117,7 @@ def cf(ref: Ref) -> Dict[str, float]:
     ubulk = _bulk["u"]
 
     cold = 2 * mu[0] * (u[0] / y[0]) / (rhobulk * ubulk**2)
-    hot = 2 * mu[-1] * (u[-1] / (2*h - y[-1])) / (rhobulk * ubulk**2)
+    hot = 2 * mu[-1] * (u[-1] / (2 * h - y[-1])) / (rhobulk * ubulk**2)
 
     return {"hot": hot, "cold": cold}
 
@@ -132,7 +183,7 @@ def bulk(ref: Ref) -> Dict[str, float]:
     tbulk = np.trapz(rhout, y) / np.trapz(rhou, y)
     tbulk = np.trapz(rhout, y) / np.trapz(rhou, y)
     rebulk = ubulk * ref.h * rhobulk / mubulk
-    mach = ubulk/np.sqrt(gamma * r_air * tbulk)
+    mach = ubulk / np.sqrt(gamma * r_air * tbulk)
     return {
         "rho": rhobulk,
         "u": ubulk,
