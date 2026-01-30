@@ -82,8 +82,8 @@ def ttau_semilocal(ref: Ref) -> Dict[str, float]:
     ldtdz = df.LAMBDADTDZ.values
     cp = ref.Cp
 
-    cold = np.abs(ldtdz[:middle]) / (rho[:middle] * cp * utau["cold"])
-    hot = np.abs(ldtdz[::-1][:middle]) / (rho[::-1][:middle] * cp * utau["hot"])
+    cold = np.abs(ldtdz[0]) / (rho[:middle] * cp * utau["cold"])
+    hot = np.abs(ldtdz[-1]) / (rho[::-1][:middle] * cp * utau["hot"])
 
     return {"hot": hot, "cold": cold}
 
