@@ -7,6 +7,7 @@ import pandas as pd
 from scipy.integrate import simpson
 from glob import glob
 
+
 class DataLoaderPandas:
     """
     Class that reads a specific directory to get statistics related to
@@ -171,9 +172,12 @@ class DataLoaderPandas:
 
         # pattern = f"[^/]+/{self.type_stat}_(\\d+\\.\\d+)\\.txt"
         # time = [float(match) for fp in file_path for match in re.findall(pattern, fp)]
-        time = np.array([
-            float(x.split(self.type_stat + "_")[1].split(".txt")[0]) for x in file_path
-        ])
+        time = np.array(
+            [
+                float(x.split(self.type_stat + "_")[1].split(".txt")[0])
+                for x in file_path
+            ]
+        )
         return file_path, time
 
     def load_first(self) -> pd.DataFrame:
