@@ -201,4 +201,10 @@ def gradu(ref):
     h = ref.h
     y = ref.y
     u = ref.df["U"].values
-    return np.gradient([0, *u, 0], [0, y, 2 * h], edge_order=2)[1:-1]
+    return np.gradient([0, *u, 0], [0, *y, 2 * h], edge_order=2)[1:-1]
+
+
+def gradu_side(ref):
+    gu = gradu(ref)
+    m = ref.middle
+    return {"hot": gu[::-1][:m], "cold": gu[:m]}
