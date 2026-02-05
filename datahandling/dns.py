@@ -1,4 +1,5 @@
 """ from .oscillation import Ref, RefData """
+
 from typing import Dict, Type
 import numpy as np
 from scipy.integrate import cumulative_trapezoid
@@ -194,3 +195,10 @@ def bulk(ref: Ref) -> Dict[str, float]:
         "tm": tm,
         "mach": mach,
     }
+
+
+def gradu(ref):
+    h = ref.h
+    y = ref.y
+    u = ref.df["U"].values
+    return np.gradient([0, *u, 0], [0, y, 2 * h], edge_order=2)[1:-1]
