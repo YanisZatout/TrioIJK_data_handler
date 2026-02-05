@@ -1,7 +1,6 @@
 from typing import Dict
 import numpy as np
 import pandas as pd
-from .oscillation import ref_values
 
 
 class LesData(object):
