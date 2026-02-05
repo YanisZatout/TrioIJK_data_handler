@@ -34,12 +34,11 @@ def ref_values(ref: pd.DataFrame, /, Cp, h, Tw) -> Tuple[Dict]:
     retau_temp = (utau_temp * h * ref["RHO"] / ref["MU"]).values
 
     rho_bulk = rhobulk = np.trapz(ref["RHO"], ref.index) / (2 * h)
-    rho_m = rhom = rho_bulk
+    rho_m = rho_bulk
     mu_bulk = mubulk = np.trapz(ref["MU"], ref.index) / (2 * h)
     u_bulk = ubulk = np.trapz(ref["URHO"], ref.index) / np.trapz(ref["RHO"], ref.index)
-    u_m = um = np.trapz(ref["U"], ref.index) / (2 * h)
+    u_m = np.trapz(ref["U"], ref.index) / (2 * h)
     t_bulk = np.trapz(ref["RHOUT_MOY"], ref.index) / np.trapz(ref["URHO"], ref.index)
-    t_m = tm = np.trapz(ref["T"], ref.index) / (2 * h)
     re_bulk = ubulk * h * rhobulk / mubulk
 
     Tw_hot = Tw["hot"]
@@ -173,15 +172,16 @@ class RefData(object):
 
 
 def osc_post_treat(df, ref) -> Tuple[Union[npt.ArrayLike, pd.DataFrame]]:
+    bulk = ref.bulk
     Tw = ref.Tw
     Tw_hot = Tw["hot"]
     Tw_cold = Tw["cold"]
     times = [d.index.get_level_values(0).unique() for d in df]
     t_plus = tplus = [t * (ref.retau["hot"] * ref.utau["hot"]) / ref.h for t in times]
-    theta_hot = [((d["T"] - ref.Tw["hot"]) / (ref.t_bulk - ref.Tw["hot"])) for d in df]
+    theta_hot = [((d["T"] - ref.Tw["hot"]) / (bulk["t"] - ref.Tw["hot"])) for d in df]
 
     theta_cold = [
-        ((d["T"] - ref.Tw["cold"]) / (ref.t_bulk - ref.Tw["cold"])) for d in df
+        ((d["T"] - ref.Tw["cold"]) / (bulk["t"] - ref.Tw["cold"])) for d in df
     ]
     theta = {"hot": theta_hot, "cold": theta_cold}
     y = [dataframe.index.get_level_values(1).unique() for dataframe in df]
