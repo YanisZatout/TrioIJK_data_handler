@@ -113,6 +113,7 @@ class RefData(object):
         Cp: float = 0,
         h: float = 0,
         Tw: Dict[str, float] = dict(list([])),
+        Pr: float = 0,
     ) -> None:
         assert Cp != 0, "Cp must be provided as a floating point value"
         assert h != 0, "h must be provided as a floating point value"
@@ -125,6 +126,7 @@ class RefData(object):
         self.Tw = self.tw = Tw
         self.gamma = 1.4
         self.r_air = self.Cp * (1 - 1 / self.gamma)
+        self.pr = self.Pr = Pr
 
     def load(self, path=None, Cp=None):
         if not path:
