@@ -11,6 +11,7 @@ class LesData(object):
         Cp: float = 0,
         h: float = 0,
         Tw: Dict[str, float] = {"hot": None, "cold": None},
+        Pr: float = 0,
     ) -> None:
         assert Cp != 0, "Cp must be provided as a floating point value"
         assert h != 0, "h must be provided as a floating point value"
@@ -21,6 +22,7 @@ class LesData(object):
         self.Cp = self.cp = Cp
         self.h = h
         self.Tw = self.tw = Tw
+        self.pr = self.Pr = Pr
 
     def load(self, ref_df=None, Cp=None):
         if not Cp:
@@ -72,7 +74,7 @@ def adim_mean_les(df, ref, mod, mesh):
     out["U_mod"]["hot"] += (
         (
             -1 * df["KAPPATURB_X_DSCALARDX"] * df["RHO"]
-            +1 * df["STRUCTURAL_USCALAR"] / ref.Cp / coef_uscalar_model
+            + 1 * df["STRUCTURAL_USCALAR"] / ref.Cp / coef_uscalar_model
         )
         / ref.utau["hot"]
     ).values[::-1][: ref.middle]
@@ -80,7 +82,7 @@ def adim_mean_les(df, ref, mod, mesh):
     out["U_mod"]["cold"] += (
         (
             -1 * df["KAPPATURB_X_DSCALARDX"] * df["RHO"]
-            +1 * df["STRUCTURAL_USCALAR"] / ref.Cp / coef_uscalar_model
+            + 1 * df["STRUCTURAL_USCALAR"] / ref.Cp / coef_uscalar_model
         )
         / ref.utau["cold"]
     ).values[: ref.middle]
@@ -90,7 +92,7 @@ def adim_mean_les(df, ref, mod, mesh):
     out["V_mod"]["hot"] += (
         (
             -1 * df["KAPPATURB_Z_DSCALARDZ"] * df["RHO"]
-            -1 * df["STRUCTURAL_WSCALAR"] / ref.Cp / coef_uscalar_model
+            - 1 * df["STRUCTURAL_WSCALAR"] / ref.Cp / coef_uscalar_model
         )
         / ref.utau["hot"]
     ).values[::-1][: ref.middle]
@@ -98,7 +100,7 @@ def adim_mean_les(df, ref, mod, mesh):
     out["V_mod"]["cold"] += (
         (
             -1 * df["KAPPATURB_Z_DSCALARDZ"] * df["RHO"]
-            -1 * df["STRUCTURAL_WSCALAR"] / ref.Cp / coef_uscalar_model
+            - 1 * df["STRUCTURAL_WSCALAR"] / ref.Cp / coef_uscalar_model
         )
         / ref.utau["cold"]
     ).values[: ref.middle]
