@@ -75,6 +75,91 @@ def trettel_larson(ref):
     return {"cold": utl_c, "hot": utl_h}
 
 
+def temperature_liang_fu_composite(ref):
+    cp = ref.cp
+    Pr = ref.pr
+    df = ref.df
+    y = ref.y
+    h = ref.h
+    middle = ref.middle
+
+    u = df.U.values
+    T = df["T"].values
+    mu = df.MU.values
+    rho = df.RHO.values
+
+    # --- COLD SIDE ---
+    y_c = y[:middle]
+    u_c = u[:middle]
+    T_c = T[:middle]
+    rho_c = rho[:middle]
+    mu_c = mu[:middle]
+
+    rho_w_c = rho_c[0]
+    mu_w_c = mu_c[0]
+
+    du_dy_c = gradu_side(ref)["cold"]
+    dT_dy_c = gradT_side(ref)["cold"]
+
+    tau_w_c = mu_w_c * du_dy_c[0]
+    qw_c = (cp * mu_w_c / Pr) * dT_dy_c[0]
+
+    y_star_c = y_c * np.sqrt(rho_c * tau_w_c) / mu_c
+
+    eta_c = y_c * np.sqrt(rho_c / rho_w_c)
+    dT_deta_c = np.gradient(T_c, eta_c, edge_order=2)
+
+    num_V_c = cp * mu_c * dT_dy_c
+    den_V_c = (cp * mu_c / Pr) * dT_dy_c - ((mu_c * du_dy_c / tau_w_c) - 1.0) * (
+        qw_c - u_c * tau_w_c
+    )
+    phi_V_c = num_V_c / den_V_c
+
+    num_L_c = cp * mu_c * np.sqrt(rho_c / rho_w_c) * dT_deta_c
+    den_L_c = qw_c - u_c * tau_w_c
+    phi_L_c = num_L_c / den_L_c
+
+    phi_VL_c = (Pr * phi_L_c) / (phi_L_c + Pr - phi_V_c)
+    theta_VL_c = cumulative_trapezoid(phi_VL_c, x=y_star_c, initial=0)
+
+    # --- HOT SIDE ---
+    dist_h = 2 * h - y
+    u_h = u[::-1][:middle]
+    T_h = T[::-1][:middle]
+    rho_h = rho[::-1][:middle]
+    mu_h = mu[::-1][:middle]
+    dist_h_local = dist_h[::-1][:middle]
+
+    rho_w_h = rho_h[0]
+    mu_w_h = mu_h[0]
+
+    du_dy_h = np.gradient(u_h, dist_h_local, edge_order=2)
+    dT_dy_h = np.gradient(T_h, dist_h_local, edge_order=2)
+
+    tau_w_h = mu_w_h * du_dy_h[0]
+    qw_h = (cp * mu_w_h / Pr) * dT_dy_h[0]
+
+    y_star_h = dist_h_local * np.sqrt(rho_h * tau_w_h) / mu_h
+
+    eta_h = dist_h_local * np.sqrt(rho_h / rho_w_h)
+    dT_deta_h = np.gradient(T_h, eta_h, edge_order=2)
+
+    num_V_h = cp * mu_h * dT_dy_h
+    den_V_h = (cp * mu_h / Pr) * dT_dy_h - ((mu_h * du_dy_h / tau_w_h) - 1.0) * (
+        qw_h - u_h * tau_w_h
+    )
+    phi_V_h = num_V_h / den_V_h
+
+    num_L_h = cp * mu_h * np.sqrt(rho_h / rho_w_h) * dT_deta_h
+    den_L_h = qw_h - u_h * tau_w_h
+    phi_L_h = num_L_h / den_L_h
+
+    phi_VL_h = (Pr * phi_L_h) / (phi_L_h + Pr - phi_V_h)
+    theta_VL_h = cumulative_trapezoid(phi_VL_h, x=y_star_h, initial=0)
+
+    return {"cold": theta_VL_c, "hot": theta_VL_h}
+
+
 def ttau_semilocal(ref: Ref) -> Dict[str, float]:
     df = ref.df
     rho = df.RHO.values
@@ -204,7 +289,37 @@ def gradu(ref):
     return np.gradient([0, *u, 0], [0, *y, 2 * h], edge_order=2)[1:-1]
 
 
+def gradT(ref):
+    h = ref.h
+    y = ref.y
+    T = ref.df["T"].values
+    tcold, thot = ref.Tw["cold"], ref.Tw["hot"]
+    return np.gradient([tcold, *T, thot], [0, *y, 2 * h], edge_order=2)[1:-1]
+
+
 def gradu_side(ref):
     gu = gradu(ref)
     m = ref.middle
     return {"hot": gu[::-1][:m], "cold": gu[:m]}
+
+
+def gradT_side(ref):
+    gT = gradT(ref)
+    m = ref.middle
+    return {"hot": gT[::-1][:m], "cold": gT[:m]}
+
+
+def get_yplus(ref, side):
+    df = ref.df
+    y = ref.y
+    h = ref.h
+    m = ref.middle
+    if "hot" in side:
+        idx = -1
+        yside = 2 * h - y[::-1][:m]
+    else:
+        idx = 0
+        yside = y[:m]
+    nu = (df.MU / df.RHO).values[idx]
+    utau = ref.utau[side]
+    return yside * utau / nu
